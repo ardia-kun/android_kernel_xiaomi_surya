@@ -1,0 +1,90 @@
+/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdm3 {
+	compatible = "qcom,ext-sdxprairie";
+	qcom,mdm-link-info = "0306_01.01.00";
+};
+
+&pil_modem {
+	/delete-property/ vdd_mss-supply;
+	/delete-property/ qcom,vdd_mss-uV-uA;
+	qcom,proxy-reg-names = "vdd_cx";
+};
+
+&mhi_1 {
+	esoc-names = "mdm";
+	esoc-0 = <&mdm3>;
+	qcom,smmu-cfg = <0x1d>;
+	qcom,addr-win = <0x0 0x20000000 0x0 0x2fffffff>;
+
+	mhi_chan@25 {
+		status = "disabled";
+	};
+
+	mhi_chan@104 {
+		status = "disabled";
+	};
+
+	mhi_chan@105 {
+		status = "disabled";
+	};
+
+	mhi_devices {
+		mhi_qrtr {
+			mhi,chan = "IPCR";
+			qcom,net-id = <3>;
+		};
+	};
+};
+
+&glink_adsp {
+	qcom,adsp_qrtr {
+		qcom,net-id = <2>;
+	};
+};
+
+&glink_slpi {
+	qcom,slpi_qrtr {
+		qcom,net-id = <1>;
+	};
+};
+
+&glink_cdsp {
+	qcom,cdsp_qrtr {
+		qcom,net-id = <1>;
+	};
+};
+
+&soc {
+	ipa_hw: qcom,ipa@1e00000 {
+		qcom,platform-type = <2>; /* APQ platform */
+	};
+};
+
+&reserved_memory {
+	mailbox_mem: mailbox_region {
+		compatible = "shared-dma-pool";
+		no-map;
+		alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+		alignment = <0x0 0x400000>;
+		size = <0x0 0x20000>;
+	};
+};
+
+&audio_apr {
+	voice_mhi_audio: qcom,voice-mhi-audio {
+		compatible = "qcom,voice-mhi-audio";
+		memory-region = <&mailbox_mem>;
+		voice_mhi_voting;
+	};
+};
