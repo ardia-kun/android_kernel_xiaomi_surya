@@ -10006,28 +10006,31 @@ static inline int get_sd_load_idx(struct sched_domain *sd,
 static unsigned long scale_rt_capacity(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
-	u64 total, used, age_stamp, avg;
-	s64 delta;
+	unsigned long max = arch_scale_cpu_capacity(cpu);
+	unsigned long used, free;
+#if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
+	unsigned long irq;
+#endif
 
-	/*
-	 * Since we're reading these variables without serialization make sure
-	 * we read them once before doing sanity checks on them.
-	 */
-	age_stamp = READ_ONCE(rq->age_stamp);
-	avg = READ_ONCE(rq->rt_avg);
-	delta = __rq_clock_broken(rq) - age_stamp;
+#if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
+	irq = READ_ONCE(rq->avg_irq.util_avg);
 
-	if (unlikely(delta < 0))
-		delta = 0;
+	if (unlikely(irq >= max))
+		return 1;
+#endif
 
-	total = sched_avg_period() + delta;
+	used = READ_ONCE(rq->avg_rt.util_avg);
+	used += READ_ONCE(rq->avg_dl.util_avg);
 
-	used = div_u64(avg, total);
+	if (unlikely(used >= max))
+		return 1;
 
-	if (likely(used < SCHED_CAPACITY_SCALE))
-		return SCHED_CAPACITY_SCALE - used;
-
-	return 1;
+	free = max - used;
+#if defined(CONFIG_IRQ_TIME_ACCOUNTING) || defined(CONFIG_PARAVIRT_TIME_ACCOUNTING)
+	free *= (max - irq);
+	free /= max;
+#endif
+	return free;
 }
 
 void init_max_cpu_capacity(struct max_cpu_capacity *mcc)
@@ -10039,7 +10042,7 @@ void init_max_cpu_capacity(struct max_cpu_capacity *mcc)
 
 static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 {
-	unsigned long capacity = arch_scale_cpu_capacity(cpu);
+	unsigned long capacity = scale_rt_capacity(cpu);
 	struct sched_group *sdg = sd->groups;
 	struct max_cpu_capacity *mcc;
 	unsigned long max_capacity;
@@ -10051,10 +10054,6 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 	capacity >>= SCHED_CAPACITY_SHIFT;
 
 	capacity = min(capacity, thermal_cap(cpu));
-	if (cpu_rq(cpu)->cpu_capacity_orig != capacity) {
-		cpu_rq(cpu)->cpu_capacity_orig = capacity;
-		update = true;
-	}
 
 	mcc = &cpu_rq(cpu)->rd->max_cpu_capacity;
 
@@ -10075,9 +10074,7 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 	}
 	raw_spin_unlock_irqrestore(&mcc->lock, flags);
 
-skip_unlock: __attribute__ ((unused));
-	capacity *= scale_rt_capacity(cpu);
-	capacity >>= SCHED_CAPACITY_SHIFT;
+	cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
 
 	if (!capacity)
 		capacity = 1;
