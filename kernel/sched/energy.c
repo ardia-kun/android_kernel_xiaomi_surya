@@ -57,7 +57,7 @@ void check_max_cap_vs_cpu_scale(int cpu, struct sched_group_energy *sge)
 	unsigned long max_cap, cpu_scale;
 
 	max_cap = sge->cap_states[sge->nr_cap_states - 1].cap;
-	cpu_scale = topology_get_cpu_scale(NULL, cpu);
+	cpu_scale = topology_get_cpu_scale(cpu);
 
 	if (max_cap == cpu_scale)
 		return;
@@ -223,13 +223,9 @@ static int sched_energy_probe(struct platform_device *pdev)
 	/* update capacity in energy model */
 	for_each_possible_cpu(cpu) {
 		unsigned long cpu_max_cap;
-		struct sched_group_energy *sge_l0, *sge;
 		int efficiency = topology_get_cpu_efficiency(cpu);
-
-		cpu_max_cap = DIV_ROUND_UP(SCHED_CAPACITY_SCALE *
-					   max_frequencies[cpu], max_freq);
-		cpu_max_cap = DIV_ROUND_UP(cpu_max_cap * efficiency,
-					   max_efficiency);
+		struct sched_group_energy *sge_l0, *sge;
+		cpu_max_cap = topology_get_cpu_scale(cpu);
 
 		/*
 		 * All the cap_states have same frequency table so use
