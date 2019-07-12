@@ -1,0 +1,47 @@
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdmshrike.dtsi"
+/ {
+	model = "Qualcomm Technologies, Inc. SDMSHRIKE V2";
+	qcom,msm-name = "SDMSHRIKE V2";
+	qcom,msm-id = <340 0x20000>;
+};
+
+/* GPU overrides */
+&msm_gpu {
+	/* Updated chip ID */
+	qcom,chipid = <0x6080001>;
+
+};
+
+&mdss_mdp {
+	qcom,fullsize-va-map;
+	qcom,sde-min-core-ib-kbps = <0>;
+	qcom,sde-min-llcc-ib-kbps = <0>;
+};
+
+&clock_npucc {
+	compatible = "qcom,npucc-sm8150-v2", "syscon";
+};
+
+&clock_dispcc {
+	compatible = "qcom,dispcc-sdmshrike-v2", "syscon";
+};
+
+&mdss_dsi0_pll {
+	compatible = "qcom,mdss_dsi_pll_7nm_v2";
+};
+
+&mdss_dsi1_pll {
+	compatible = "qcom,mdss_dsi_pll_7nm_v2";
+};
