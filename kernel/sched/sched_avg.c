@@ -182,7 +182,6 @@ unsigned int sched_get_cpu_util(int cpu)
 		util = div64_u64(util,
 				 sched_ravg_window >> SCHED_CAPACITY_SHIFT);
 	}
-#endif
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
 
 	util = (util >= capacity) ? capacity : util;
