@@ -7979,6 +7979,10 @@ static int cpu_cgroup_css_online(struct cgroup_subsys_state *css)
 #ifdef CONFIG_UCLAMP_ASSIST
 	uclamp_set(css);
 #endif
+#ifdef CONFIG_UCLAMP_TASK_GROUP
+	/* Propagate the effective uclamp value for the new group */
+	cpu_util_update_eff(css);
+#endif
 
 	return 0;
 }
