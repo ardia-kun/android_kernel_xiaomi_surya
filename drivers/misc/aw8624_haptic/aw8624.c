@@ -2577,8 +2577,8 @@ static int aw8624_parse_dt(struct device *dev, struct aw8624 *aw8624,
 		if (rc < 0) {
 			VIB_DEBUG("Read qcom,wf-pattern property failed !");
 		}
-		VIB_DEBUG("effect->pattern_length=%d  effect->pattern=%d",
-			  effect->pattern_length, (int)effect->pattern);
+		VIB_DEBUG("effect->pattern_length=%d  effect->pattern=%ld",
+			  effect->pattern_length, (uintptr_t)effect->pattern);
 
 		effect->play_rate_us = config->play_rate_us;
 		rc = of_property_read_u32(child_node, "qcom,wf-play-rate-us",
