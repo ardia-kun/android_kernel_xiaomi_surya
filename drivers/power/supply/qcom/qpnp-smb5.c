@@ -30,6 +30,7 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 #endif
+#include <linux/ratelimit.h>
 #include <linux/regulator/machine.h>
 #include <linux/iio/consumer.h>
 #include <linux/pmic-voter.h>
@@ -3933,8 +3934,8 @@ static ssize_t lct_thermal_call_status_store(struct device *dev,
 		return retval;
 	}
 
-    LctIsInCall = input;
-	pr_info("IsInCall = %d\n", LctIsInCall);
+LctIsInCall = input;
+	pr_debug_ratelimited("IsInCall = %d\n", LctIsInCall);
 
 	return count;
 }
@@ -3974,12 +3975,12 @@ static int thermal_notifier_callback(struct notifier_block *noti, unsigned long 
 		blank = ev_data->data;
 		if (event == MSM_DRM_EARLY_EVENT_BLANK && *blank == MSM_DRM_BLANK_UNBLANK) {
 			lct_backlight_off = false;
-			pr_info("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
+pr_debug_ratelimited("thermal_notifier lct_backlight_off:%d", lct_backlight_off);
 			schedule_work(&chg->fb_notify_work);
 		}
 		else if (event == MSM_DRM_EVENT_BLANK && *blank == MSM_DRM_BLANK_POWERDOWN) {
 			lct_backlight_off = true;
-			pr_info("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
+			pr_debug_ratelimited("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
 			schedule_work(&chg->fb_notify_work);
 		}
 	}
@@ -4155,7 +4156,7 @@ static int smb5_show_charger_status(struct smb5 *chip)
 	}
 	batt_charge_type = val.intval;
 
-	pr_info("SMB5 status - usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
+	pr_debug_ratelimited("SMB5 status - usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
 		usb_present, chg->real_charger_type,
 		batt_present, batt_health, batt_charge_type);
 	return rc;
@@ -4348,14 +4349,14 @@ static int smb5_probe(struct platform_device *pdev)
 		pr_err("Couldn't initialize batt psy rc=%d\n", rc);
 		goto cleanup;
 	}
-	pr_info("enter sysfs create file thermal\n");
+pr_debug_ratelimited("enter sysfs create file thermal\n");
 	for (attr_count2 = 0; attr_count2 < ARRAY_SIZE(attrs2); attr_count2++) {
 		    rc = sysfs_create_file(&chg->dev->kobj,
-						&attrs2[attr_count2].attr);
+					&attrs2[attr_count2].attr);
 			if (rc < 0) {
-				pr_info(" sysfs create file fail %d\n",rc);
+				pr_debug_ratelimited(" sysfs create file fail %d\n",rc);
 		        sysfs_remove_file(&chg->dev->kobj,
-						&attrs2[attr_count2].attr);
+					&attrs2[attr_count2].attr);
 			}
 		}
 	/* Register android dual-role class */
@@ -4415,7 +4416,7 @@ static int smb5_probe(struct platform_device *pdev)
 	if (chg->dcin_uusb_over_gpio_en && gpio_is_valid(chg->micro_usb_gpio))
 		smb_micro_usb_irq_handler(chg->micro_usb_irq, chg);
 
-	pr_info("QPNP SMB5 probed successfully\n");
+pr_debug_ratelimited("QPNP SMB5 probed successfully\n");
 
 	return rc;
 

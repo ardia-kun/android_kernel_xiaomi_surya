@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_batterydata.h>
 #include <linux/power_supply.h>
+#include <linux/ratelimit.h>
 #include <linux/slab.h>
 #include <linux/pmic-voter.h>
 #include "step-chg-jeita.h"
