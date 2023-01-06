@@ -107,7 +107,6 @@ int PageMovable(struct page *page)
 
 	return 0;
 }
-EXPORT_SYMBOL(PageMovable);
 
 void __SetPageMovable(struct page *page, struct address_space *mapping)
 {
