@@ -1444,7 +1444,12 @@ void *zs_map_object(struct zs_pool *pool, unsigned long handle,
 	obj_to_location(obj, &page, &obj_idx);
 	zspage = get_zspage(page);
 
-	/* migration cannot move any subpage in this zspage */
+	/*
+	 * migration cannot move any zpages in this zspage. Here, pool->lock
+	 * is too heavy since callers would take some time until they calls
+	 * zs_unmap_object API so delegate the locking from class to zspage
+	 * which is smaller granularity.
+	 */
 	migrate_read_lock(zspage);
 
 	get_zspage_mapping(zspage, &class_idx, &fg);
@@ -1609,9 +1614,8 @@ unsigned long zs_malloc(struct zs_pool *pool, size_t size, gfp_t gfp)
 		fix_fullness_group(class, zspage);
 		record_obj(handle, obj);
 		class_stat_inc(class, ZS_OBJS_INUSE, 1);
-		spin_unlock(&pool->lock);
 
-		return handle;
+		goto out;
 	}
 
 	spin_unlock(&pool->lock);
@@ -1634,6 +1638,14 @@ unsigned long zs_malloc(struct zs_pool *pool, size_t size, gfp_t gfp)
 
 	/* We completely set up zspage so mark them as movable */
 	SetZsPageMovable(pool, zspage);
+out:
+#ifdef CONFIG_ZPOOL
+	/* Add/move zspage to beginning of LRU */
+	if (!list_empty(&zspage->lru))
+		list_del(&zspage->lru);
+	list_add(&zspage->lru, &pool->lru);
+#endif
+
 	spin_unlock(&pool->lock);
 
 	return handle;
