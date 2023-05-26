@@ -41,6 +41,9 @@
 #include <linux/swapops.h>
 #include <linux/writeback.h>
 #include <linux/pagemap.h>
+#include <linux/workqueue.h>
+
+#include "internal.h"
 
 /*********************************
 * statistics
@@ -493,6 +496,26 @@ static struct zswap_pool *zswap_pool_find_get(char *type, char *compressor)
 	}
 
 	return NULL;
+}
+
+static void shrink_worker(struct work_struct *w)
+{
+	struct zswap_pool *pool = container_of(w, typeof(*pool),
+						shrink_work);
+	int ret, failures = 0;
+
+	do {
+		ret = zpool_shrink(pool->zpool, 1, NULL);
+		if (ret) {
+			zswap_reject_reclaim_fail++;
+			if (ret != -EAGAIN)
+				break;
+			if (++failures == MAX_RECLAIM_RETRIES)
+				break;
+		}
+		cond_resched();
+	} while (!zswap_can_accept());
+	zswap_pool_put(pool);
 }
 
 static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
@@ -1003,17 +1026,9 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		if (zswap_shrink()) {
 			zswap_reject_reclaim_fail++;
 			ret = -ENOMEM;
-			goto reject;
-		}
-
-		/* A second zswap_is_full() check after
-		 * zswap_shrink() to make sure it's now
-		 * under the max_pool_percent
-		 */
-		if (zswap_is_full()) {
-			ret = -ENOMEM;
-			goto reject;
-		}
+			goto shrink;
+		} else
+			zswap_pool_reached_full = false;
 	}
 
 	/* allocate entry */
@@ -1089,9 +1104,19 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 
 put_dstmem:
 	put_cpu_var(zswap_dstmem);
-	zswap_pool_put(entry->pool);
+	if (entry->pool)
+		zswap_pool_put(entry->pool);
 freepage:
 	zswap_entry_cache_free(entry);
+shrink:
+	if (zswap_pool_reached_full) {
+		struct zswap_pool *p = entry->pool ? entry->pool : zswap_pool_current_get();
+		if (p) {
+			queue_work(zswap_shrink_wq, &p->shrink_work);
+			if (!entry->pool) 
+				zswap_pool_put(p);
+		}
+	}
 reject:
 	return ret;
 }
