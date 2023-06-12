@@ -144,14 +144,31 @@ module_param_named(exclusive_loads, zswap_exclusive_loads_enabled, bool, 0644);
 * data structures
 **********************************/
 
+struct crypto_acomp_ctx {
+	struct crypto_acomp *acomp;
+	struct acomp_req *req;
+	struct crypto_wait wait;
+	u8 *dstmem;
+	struct mutex *mutex;
+};
+
+/*
+ * The lock ordering is zswap_tree.lock -> zswap_pool.lru_lock.
+ * The only case where lru_lock is not acquired while holding tree.lock is
+ * when a zswap_entry is taken off the lru for writeback, in that case it
+ * needs to be verified that it's still valid in the tree.
+ */
 struct zswap_pool {
 	struct zpool *zpool;
 	struct crypto_comp * __percpu *tfm;
 	struct kref kref;
 	struct list_head list;
 	struct work_struct work;
+	struct work_struct shrink_work;
 	struct hlist_node node;
 	char tfm_name[CRYPTO_MAX_ALG_NAME];
+	struct list_head lru;
+	spinlock_t lru_lock;
 };
 
 /*
@@ -169,9 +186,12 @@ struct zswap_pool {
  *            be held while changing the refcount.  Since the lock must
  *            be held, there is no reason to also make refcount atomic.
  * length - the length in bytes of the compressed page data.  Needed during
- *          decompression
+ *          decompression. For a same value filled page length is 0, and both
+ *          pool and lru are invalid and must be ignored.
  * pool - the zswap_pool the entry's data is in
  * handle - zpool allocation handle that stores the compressed page data
+ * value - value of the same-value filled pages which have same content
+ * lru - handle to the pool's lru used to evict pages.
  */
 struct zswap_entry {
 	struct rb_node rbnode;
@@ -179,7 +199,11 @@ struct zswap_entry {
 	int refcount;
 	unsigned int length;
 	struct zswap_pool *pool;
-	unsigned long handle;
+	union {
+		unsigned long handle;
+		unsigned long value;
+	};
+	struct list_head lru;
 };
 
 struct zswap_header {
@@ -344,8 +368,17 @@ static void zswap_rb_erase(struct rb_root *root, struct zswap_entry *entry)
  */
 static void zswap_free_entry(struct zswap_entry *entry)
 {
-	zpool_free(entry->pool->zpool, entry->handle);
-	zswap_pool_put(entry->pool);
+	if (!entry->length) {
+		atomic_dec(&zswap_same_filled_pages);
+	} else {
+		spin_lock(&entry->pool->lru_lock);
+		list_del(&entry->lru);
+		spin_unlock(&entry->pool->lru_lock);
+
+		zpool_free(entry->pool->zpool, entry->handle);
+		zswap_pool_put(entry->pool);
+	}
+
 	zswap_entry_cache_free(entry);
 	atomic_dec(&zswap_stored_pages);
 	zswap_update_total_size();
@@ -519,14 +552,72 @@ static struct zswap_pool *zswap_pool_find_get(char *type, char *compressor)
 	return NULL;
 }
 
+static int zswap_reclaim_entry(struct zswap_pool *pool)
+{
+	struct zswap_header *zhdr;
+	struct zswap_entry *entry;
+	struct zswap_tree *tree;
+	pgoff_t swpoffset;
+	int ret;
+
+	/* Get an entry off the LRU */
+	spin_lock(&pool->lru_lock);
+	if (list_empty(&pool->lru)) {
+		spin_unlock(&pool->lru_lock);
+		return -EINVAL;
+	}
+	entry = list_last_entry(&pool->lru, struct zswap_entry, lru);
+	list_del_init(&entry->lru);
+	zhdr = zpool_map_handle(pool->zpool, entry->handle, ZPOOL_MM_RO);
+	tree = zswap_trees[swp_type(zhdr->swpentry)];
+	zpool_unmap_handle(pool->zpool, entry->handle);
+	/*
+	 * Once the lru lock is dropped, the entry might get freed. The
+	 * swpoffset is copied to the stack, and entry isn't deref'd again
+	 * until the entry is verified to still be alive in the tree.
+	 */
+	swpoffset = swp_offset(zhdr->swpentry);
+	spin_unlock(&pool->lru_lock);
+
+	/* Check for invalidate() race */
+	spin_lock(&tree->lock);
+	if (entry != zswap_rb_search(&tree->rbroot, swpoffset)) {
+		ret = -EAGAIN;
+		goto unlock;
+	}
+	/* Hold a reference to prevent a free during writeback */
+	zswap_entry_get(entry);
+	spin_unlock(&tree->lock);
+
+	ret = zswap_writeback_entry(pool->zpool, entry->handle);
+
+	spin_lock(&tree->lock);
+	if (ret) {
+		/* Writeback failed, put entry back on LRU */
+		spin_lock(&pool->lru_lock);
+		list_move(&entry->lru, &pool->lru);
+		spin_unlock(&pool->lru_lock);
+	}
+
+	/* Drop local reference */
+	zswap_entry_put(tree, entry);
+unlock:
+	spin_unlock(&tree->lock);
+	return ret ? -EAGAIN : 0;
+}
+
 static void shrink_worker(struct work_struct *w)
 {
 	struct zswap_pool *pool = container_of(w, typeof(*pool),
 						shrink_work);
 	int ret, failures = 0;
 
+	/* zpool_evictable will be removed once all 3 backends have migrated */
 	do {
-		ret = zpool_shrink(pool->zpool, 1, NULL);
+		if (zpool_evictable(pool->zpool))
+			ret = zpool_shrink(pool->zpool, 1, NULL);
+		else
+			ret = zswap_reclaim_entry(pool);
 		if (ret) {
 			zswap_reject_reclaim_fail++;
 			if (ret != -EAGAIN)
@@ -589,6 +680,9 @@ static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
 	 */
 	kref_init(&pool->kref);
 	INIT_LIST_HEAD(&pool->list);
+	INIT_LIST_HEAD(&pool->lru);
+	spin_lock_init(&pool->lru_lock);
+	INIT_WORK(&pool->shrink_work, shrink_worker);
 
 	zswap_pool_debug("created", pool);
 
@@ -1029,6 +1123,8 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	char *buf;
 	u8 *src, *dst;
 	struct zswap_header *zhdr;
+	unsigned int hlen;
+	gfp_t gfp;
 
 	/* THP isn't supported */
 	if (PageTransHuge(page)) {
@@ -1080,10 +1176,11 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	}
 
 	/* store */
-	len = dlen + sizeof(struct zswap_header);
-	ret = zpool_malloc(entry->pool->zpool, len,
-			   __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM,
-			   &handle);
+	hlen = sizeof(zhdr);
+	gfp = __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM;
+	if (zpool_malloc_support_movable(entry->pool->zpool))
+		gfp |= __GFP_HIGHMEM | __GFP_MOVABLE;
+	ret = zpool_malloc(entry->pool->zpool, hlen + dlen, gfp, &handle);
 	if (ret == -ENOSPC) {
 		zswap_reject_compress_poor++;
 		goto put_dstmem;
@@ -1115,6 +1212,12 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 			zswap_entry_put(tree, dupentry);
 		}
 	} while (ret == -EEXIST);
+	/* zpool_evictable will be removed once all 3 backends have migrated */
+	if (entry->length && !zpool_evictable(entry->pool->zpool)) {
+		spin_lock(&entry->pool->lru_lock);
+		list_add(&entry->lru, &entry->pool->lru);
+		spin_unlock(&entry->pool->lru_lock);
+	}
 	spin_unlock(&tree->lock);
 
 	/* update stats */
@@ -1176,7 +1279,6 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 	}
 	spin_unlock(&tree->lock);
 
-	/* decompress */
 	dlen = PAGE_SIZE;
 	src = (u8 *)zpool_map_handle(entry->pool->zpool, entry->handle,
 			ZPOOL_MM_RO) + sizeof(struct zswap_header);
@@ -1186,13 +1288,20 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 	put_cpu_ptr(entry->pool->tfm);
 	kunmap_atomic(dst);
 	zpool_unmap_handle(entry->pool->zpool, entry->handle);
+
 	BUG_ON(ret);
 
 	spin_lock(&tree->lock);
 	zswap_entry_put(tree, entry);
+
 	if (!ret && zswap_exclusive_loads_enabled) {
 		zswap_invalidate_entry(tree, entry);
 		*exclusive = true;
+	} else if (entry->length && !zpool_evictable(entry->pool->zpool)) {
+		/* zpool_evictable will be removed once all 3 backends have migrated */
+		spin_lock(&entry->pool->lru_lock);
+		list_move(&entry->lru, &entry->pool->lru);
+		spin_unlock(&entry->pool->lru_lock);
 	}
 	spin_unlock(&tree->lock);
 
