@@ -135,10 +135,9 @@ EXPORT_SYMBOL(zpool_has_pool);
 
 /**
  * zpool_create_pool() - Create a new zpool
- * @type	The type of the zpool to create (e.g. zbud, zsmalloc)
- * @name	The name of the zpool (e.g. zram0, zswap)
- * @gfp		The GFP flags to use when allocating the pool.
- * @ops		The optional ops callback.
+ * @type:	The type of the zpool to create (e.g. zbud, zsmalloc)
+ * @name:	The name of the zpool (e.g. zram0, zswap)
+ * @gfp:	The GFP flags to use when allocating the pool.
  *
  * This creates a new zpool of the specified type.  The gfp flags will be
  * used when allocating memory, if the implementation supports it.  If the
@@ -150,8 +149,7 @@ EXPORT_SYMBOL(zpool_has_pool);
  *
  * Returns: New zpool on success, NULL on failure.
  */
-struct zpool *zpool_create_pool(const char *type, const char *name, gfp_t gfp,
-		const struct zpool_ops *ops)
+struct zpool *zpool_create_pool(const char *type, const char *name, gfp_t gfp)
 {
 	struct zpool_driver *driver;
 	struct zpool *zpool;
@@ -178,8 +176,7 @@ struct zpool *zpool_create_pool(const char *type, const char *name, gfp_t gfp,
 	}
 
 	zpool->driver = driver;
-	zpool->pool = driver->create(name, gfp, ops, zpool);
-	zpool->ops = ops;
+	zpool->pool = driver->create(name, gfp);
 
 	if (!zpool->pool) {
 		pr_err("couldn't create %s pool\n", type);
@@ -277,29 +274,6 @@ void zpool_free(struct zpool *zpool, unsigned long handle)
 }
 
 /**
- * zpool_shrink() - Shrink the pool size
- * @pool	The zpool to shrink.
- * @pages	The number of pages to shrink the pool.
- * @reclaimed	The number of pages successfully evicted.
- *
- * This attempts to shrink the actual memory size of the pool
- * by evicting currently used handle(s).  If the pool was
- * created with no zpool_ops, or the evict call fails for any
- * of the handles, this will fail.  If non-NULL, the @reclaimed
- * parameter will be set to the number of pages reclaimed,
- * which may be more than the number of pages requested.
- *
- * Implementations must guarantee this to be thread-safe.
- *
- * Returns: 0 on success, negative value on error/failure.
- */
-int zpool_shrink(struct zpool *zpool, unsigned int pages,
-			unsigned int *reclaimed)
-{
-	return zpool->driver->shrink(zpool->pool, pages, reclaimed);
-}
-
-/**
  * zpool_map_handle() - Map a previously allocated handle into memory
  * @pool	The zpool that the handle was allocated from
  * @handle	The handle to map
@@ -353,6 +327,24 @@ void zpool_unmap_handle(struct zpool *zpool, unsigned long handle)
 u64 zpool_get_total_size(struct zpool *zpool)
 {
 	return zpool->driver->total_size(zpool->pool);
+}
+
+/**
+ * zpool_can_sleep_mapped - Test if zpool can sleep when do mapped.
+ * @zpool:	The zpool to test
+ *
+ * Some allocators enter non-preemptible context in ->map() callback (e.g.
+ * disable pagefaults) and exit that context in ->unmap(), which limits what
+ * we can do with the mapped object. For instance, we cannot wait for
+ * asynchronous crypto API to decompress such an object or take mutexes
+ * since those will call into the scheduler. This function tells us whether
+ * we use such an allocator.
+ *
+ * Returns: true if zpool can sleep; false otherwise.
+ */
+bool zpool_can_sleep_mapped(struct zpool *zpool)
+{
+	return zpool->driver->sleep_mapped;
 }
 
 MODULE_LICENSE("GPL");
