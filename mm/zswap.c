@@ -987,43 +987,6 @@ static int zswap_enabled_param_set(const char *val,
 /*********************************
 * writeback code
 **********************************/
-/* return enum for zswap_get_swap_cache_page */
-enum zswap_get_swap_ret {
-	ZSWAP_SWAPCACHE_NEW,
-	ZSWAP_SWAPCACHE_EXIST,
-	ZSWAP_SWAPCACHE_FAIL,
-};
-
-/*
- * zswap_get_swap_cache_page
- *
- * This is an adaption of read_swap_cache_async()
- *
- * This function tries to find a page with the given swap entry
- * in the swapper_space address space (the swap cache).  If the page
- * is found, it is returned in retpage.  Otherwise, a page is allocated,
- * added to the swap cache, and returned in retpage.
- *
- * If success, the swap cache page is returned in retpage
- * Returns ZSWAP_SWAPCACHE_EXIST if page was already in the swap cache
- * Returns ZSWAP_SWAPCACHE_NEW if the new page needs to be populated,
- *     the new page is added to swapcache and locked
- * Returns ZSWAP_SWAPCACHE_FAIL on error
- */
-static int zswap_get_swap_cache_page(swp_entry_t entry,
-				struct page **retpage)
-{
-	bool page_was_allocated;
-
-	*retpage = __read_swap_cache_async(entry, GFP_KERNEL,
-			NULL, 0, &page_was_allocated);
-	if (page_was_allocated)
-		return ZSWAP_SWAPCACHE_NEW;
-	if (!*retpage)
-		return ZSWAP_SWAPCACHE_FAIL;
-	return ZSWAP_SWAPCACHE_EXIST;
-}
-
 /*
  * Attempts to free an entry by adding a page to the swap cache,
  * decompressing the entry data into the page, and issuing a
@@ -1043,6 +1006,7 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
 	struct page *page;
 	struct crypto_comp *tfm;
 	struct zpool *pool = entry->pool->zpool;
+	bool page_was_allocated;
 	u8 *src, *dst, *tmp = NULL;
 	unsigned int dlen;
 	int ret;
@@ -1056,55 +1020,55 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
 			return -ENOMEM;
 	}
 
-	/* try to allocate swap cache page */
-	switch (zswap_get_swap_cache_page(swpentry, &page)) {
-	case ZSWAP_SWAPCACHE_FAIL: /* no memory or invalidate happened */
+	/* try to allocate swap cache page - Mengikuti logika Incoming */
+	page = __read_swap_cache_async(swpentry, GFP_KERNEL, NULL, 0,
+				       &page_was_allocated);
+	if (!page) {
 		ret = -ENOMEM;
 		goto fail;
+	}
 
-	case ZSWAP_SWAPCACHE_EXIST:
-		/* page is already in the swap cache, ignore for now */
+	/* Found an existing page, we raced with load/swapin */
+	if (!page_was_allocated) {
 		put_page(page);
 		ret = -EEXIST;
 		goto fail;
-
-	case ZSWAP_SWAPCACHE_NEW: /* page is locked */
-		spin_lock(&tree->lock);
-		if (zswap_rb_search(&tree->rbroot, swp_offset(entry->swpentry)) != entry) {
-			spin_unlock(&tree->lock);
-			delete_from_swap_cache(page);
-			ret = -ENOMEM;
-			goto fail;
-		}
-		spin_unlock(&tree->lock);
-
-		/* decompress */
-		dlen = PAGE_SIZE;
-
-		src = zpool_map_handle(pool, entry->handle, ZPOOL_MM_RO);
-		if (!zpool_can_sleep_mapped(pool)) {
-			memcpy(tmp, src, entry->length);
-			src = tmp;
-			zpool_unmap_handle(pool, entry->handle);
-		}
-
-		dst = kmap_atomic(page);
-		tfm = *get_cpu_ptr(entry->pool->tfm);
-		ret = crypto_comp_decompress(tfm, src, entry->length, dst, &dlen);
-		put_cpu_ptr(entry->pool->tfm);
-		kunmap_atomic(dst);
-
-		if (!zpool_can_sleep_mapped(pool))
-			kfree(tmp);
-		else
-			zpool_unmap_handle(pool, entry->handle);
-
-		BUG_ON(ret);
-		BUG_ON(dlen != PAGE_SIZE);
-
-		/* page is up to date */
-		SetPageUptodate(page);
 	}
+
+	spin_lock(&tree->lock);
+	if (zswap_rb_search(&tree->rbroot, swp_offset(entry->swpentry)) != entry) {
+		spin_unlock(&tree->lock);
+		delete_from_swap_cache(page); /* 4.14 tidak kenal folio! */
+		ret = -ENOMEM;
+		goto fail;
+	}
+	spin_unlock(&tree->lock);
+
+	dlen = PAGE_SIZE;
+
+	src = zpool_map_handle(pool, entry->handle, ZPOOL_MM_RO);
+	if (!zpool_can_sleep_mapped(pool)) {
+		memcpy(tmp, src, entry->length);
+		src = tmp;
+		zpool_unmap_handle(pool, entry->handle);
+	}
+
+	dst = kmap_atomic(page);
+	tfm = *get_cpu_ptr(entry->pool->tfm);
+	ret = crypto_comp_decompress(tfm, src, entry->length, dst, &dlen);
+	put_cpu_ptr(entry->pool->tfm);
+	kunmap_atomic(dst);
+
+	if (!zpool_can_sleep_mapped(pool))
+		kfree(tmp);
+	else
+		zpool_unmap_handle(pool, entry->handle);
+
+	BUG_ON(ret);
+	BUG_ON(dlen != PAGE_SIZE);
+
+	/* page is up to date */
+	SetPageUptodate(page);
 
 	/* move it to the tail of the inactive list after end_writeback */
 	SetPageReclaim(page);
@@ -1119,13 +1083,6 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
 fail:
 	if (!zpool_can_sleep_mapped(pool))
 		kfree(tmp);
-
-	/*
-	 * if we get here due to ZSWAP_SWAPCACHE_EXIST
-	 * a load may be happening concurrently.
-	 * it is safe and okay to not free the entry.
-	 * it is also okay to return !0
-	 */
 	return ret;
 }
 
