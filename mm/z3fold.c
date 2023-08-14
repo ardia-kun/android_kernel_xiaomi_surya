@@ -111,8 +111,7 @@ struct z3fold_header {
  *		the size of its free region.
  * @stale:	list of pages marked for freeing
  * @pages_nr:	number of z3fold pages in the pool.
- * @ops:	pointer to a structure of user defined operations specified at
- *		pool creation time.
+ * @c_handle:	cache for z3fold_buddy_slots allocation
  * @compact_wq:	workqueue for page layout background optimization
  * @release_wq:	workqueue for safe page release
  * @work:	work_struct for safe page release
