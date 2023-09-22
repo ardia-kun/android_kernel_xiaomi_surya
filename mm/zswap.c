@@ -1145,6 +1145,14 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		goto reject;
 	}
 
+	spin_lock(&tree->lock);
+	dupentry = zswap_rb_search(&tree->rbroot, offset);
+	if (dupentry) {
+		zswap_duplicate_entry++;
+		zswap_invalidate_entry(tree, dupentry);
+	}
+	spin_unlock(&tree->lock);
+
 	/* reclaim space if needed */
 	if (zswap_is_full()) {
 		zswap_pool_limit_hit++;
@@ -1189,6 +1197,7 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		goto freepage;
 	}
 
+	/* Compress */
 	dst = get_cpu_var(zswap_dstmem);
 	tfm = *get_cpu_ptr(entry->pool->tfm);
 	src = kmap_atomic(page);
@@ -1200,6 +1209,7 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		goto put_dstmem;
 	}
 
+	/* Malloc in pool */
 	gfp = __GFP_NORETRY | __GFP_NOWARN | __GFP_KSWAPD_RECLAIM;
 	if (zpool_malloc_support_movable(entry->pool->zpool))
 		gfp |= __GFP_HIGHMEM | __GFP_MOVABLE;
@@ -1214,14 +1224,11 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		goto put_dstmem;
 	}
 
-	/* Copy compressed data to zpool */
 	buf = zpool_map_handle(entry->pool->zpool, handle, ZPOOL_MM_WO);
 	memcpy(buf, dst, dlen);
 	zpool_unmap_handle(entry->pool->zpool, handle);
-	
 	put_cpu_var(zswap_dstmem);
 
-	/* populate entry */
 	entry->swpentry = swp_entry(type, offset);
 	entry->handle = handle;
 	entry->length = dlen;
@@ -1230,6 +1237,7 @@ insert_entry:
 	/* map */
 	spin_lock(&tree->lock);
 	while (zswap_rb_insert(&tree->rbroot, entry, &dupentry) == -EEXIST) {
+		WARN_ON(1);
 		zswap_duplicate_entry++;
 		zswap_invalidate_entry(tree, dupentry);
 	}
@@ -1240,7 +1248,6 @@ insert_entry:
 	}
 	spin_unlock(&tree->lock);
 
-	/* update stats */
 	atomic_inc(&zswap_stored_pages);
 	zswap_update_total_size();
 
