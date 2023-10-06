@@ -1260,14 +1260,12 @@ put_dstmem:
 freepage:
 	zswap_entry_cache_free(entry);
 shrink:
-	if (zswap_pool_reached_full) {
-		struct zswap_pool *p = entry->pool ? entry->pool : zswap_pool_current_get();
-		if (p) {
-			queue_work(zswap_shrink_wq, &p->shrink_work);
-			if (!entry->pool) 
-				zswap_pool_put(p);
-		}
+	{
+		struct zswap_pool *pool = zswap_pool_current_get();
+		if (pool && !queue_work(zswap_shrink_wq, &pool->shrink_work))
+			zswap_pool_put(pool);
 	}
+
 reject:
 	return ret;
 }
