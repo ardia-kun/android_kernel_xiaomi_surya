@@ -187,7 +187,7 @@ config CLEAN_MIN_KBYTES
 	      pressure;
 	    - avoid high latency and prevent livelock in near-OOM conditions.
 
-	  Setting this value too high may result in a early out-of-memory condition
+	  Setting it to a high value may result in a early out-of-memory condition
 	  due to the inability to reclaim the protected amount of clean file pages
 	  when other types of pages cannot be reclaimed.
 
