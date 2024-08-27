@@ -520,6 +520,16 @@ struct sched_entity {
 	u64				vruntime;
 	s64				vlag;
 	u64				slice;
+#ifdef CONFIG_SCHED_BORE
+	u64				burst_time;
+	u32				prev_burst_penalty;
+	u32				curr_burst_penalty;
+	u32				burst_penalty;
+	u32				burst_score;
+	u32				child_burst;
+	u32				child_burst_cnt;
+	u64				child_burst_last_cached;
+#endif // CONFIG_SCHED_BORE
 
 	u64				nr_migrations;
 
