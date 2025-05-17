@@ -3572,7 +3572,7 @@ static inline void update_load_avg(struct cfs_rq *cfs_rq, struct sched_entity *s
 	if (se->avg.last_update_time && !(flags & SKIP_AGE_LOAD))
 		__update_load_avg_se(now, cpu, cfs_rq, se);
 
-	decayed  = update_cfs_rq_load_avg(now, cfs_rq);
+	decayed  = update_cfs_rq_load_avg(now, cfs_rq, true);
 	decayed |= propagate_entity_load_avg(se);
 
 	if (!se->avg.last_update_time && (flags & DO_ATTACH)) {
