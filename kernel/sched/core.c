@@ -2666,11 +2666,13 @@ bool cpus_share_cache(int this_cpu, int that_cpu)
 
 static bool ttwu_queue_remote(struct task_struct *p, int cpu, int wake_flags)
 {
-	if (sched_feat(TTWU_QUEUE) && !cpus_share_cache(smp_processor_id(), cpu)) {
+#if SCHED_FEAT_TTWU_QUEUE
+	if (!cpus_share_cache(smp_processor_id(), cpu)) {
 		sched_clock_cpu(cpu); /* Sync clocks across CPUs */
 		__ttwu_queue_remote(p, cpu, wake_flags);
 		return true;
 	}
+#endif
 
 	return false;
 }
