@@ -136,6 +136,103 @@ static char *initcall_command_line;
 static char *execute_command;
 static char *ramdisk_execute_command;
 
+/* Workarounds */
+static bool legacy_timestamp_source = false;
+
+static bool uname_bpf_spoof = false;
+
+static int __init set_uname_bpf_spoof(char *val)
+{
+	int tmp = uname_bpf_spoof;
+
+	if (get_option(&val, &tmp)) {
+		uname_bpf_spoof = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("uname_bpf_spoof=", set_uname_bpf_spoof);
+
+bool is_bpf_spoof_enabled(void)
+{
+	return uname_bpf_spoof;
+}
+
+static int __init set_timestamp_source(char *val)
+{
+	int tmp = legacy_timestamp_source;
+
+	if (get_option(&val, &tmp)) {
+		legacy_timestamp_source = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("legacy_timestamp_source=", set_timestamp_source);
+
+unsigned int is_legacy_timestamp(void)
+{
+	return legacy_timestamp_source;
+}
+
+/* Hacks */
+static bool init_protection = true;
+
+static int __init set_init_protection(char *val)
+{
+	int tmp = init_protection;
+
+	if (get_option(&val, &tmp)) {
+		init_protection = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("init_protection=", set_init_protection);
+
+bool init_protection_enabled(void)
+{
+	return init_protection;
+}
+
+static bool warm_reboot = false;
+
+static int __init set_warm_reboot(char *val)
+{
+	int tmp = warm_reboot;
+
+	if (get_option(&val, &tmp)) {
+		warm_reboot = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("warm_reboot=", set_warm_reboot);
+
+bool always_warm_reboot(void)
+{
+	return warm_reboot;
+}
+
+static bool disable_msm_perf = false;
+
+static int __init set_disable_msm_perf(char *val)
+{
+	int tmp = disable_msm_perf;
+
+	if (get_option(&val, &tmp)) {
+		disable_msm_perf = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("no_msm_perf_boost=", set_disable_msm_perf);
+
+bool msm_perf_disabled(void)
+{
+	return disable_msm_perf;
+}
+
 /*
  * Used to generate warnings if static_key manipulation functions are used
  * before jump_label_init is called.
@@ -583,6 +680,17 @@ asmlinkage __visible void __init start_kernel(void)
 	if (!IS_ERR_OR_NULL(after_dashes))
 		parse_args("Setting init args", after_dashes, NULL, 0, -1, -1,
 			   NULL, set_init_arg);
+
+	pr_info("Hack: init_protection=%s\n",
+		init_protection ? "enabled" : "disabled");
+	pr_info("Hack: warm_reboot=%s\n",
+		warm_reboot ? "enabled" : "disabled");
+	pr_info("Hack: no_msm_perf_boost=%s\n",
+		disable_msm_perf ? "enabled" : "disabled");
+	pr_info("Workaround: legacy_timestamp_source=%s\n",
+			legacy_timestamp_source ? "enabled" : "disabled");
+	pr_info("Workaround: uname_bpf_spoof=%s\n",
+			uname_bpf_spoof ? "enabled" : "disabled");
 
 	/*
 	 * These use large bootmem allocations and must precede
