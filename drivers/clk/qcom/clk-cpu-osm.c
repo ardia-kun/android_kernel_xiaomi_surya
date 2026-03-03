@@ -979,6 +979,9 @@ static u64 clk_osm_get_cpu_cycle_counter(int cpu)
 static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c)
 {
 	u32 data, src, lval, i, j = c->osm_table_size;
+	char prop_name[32] = "";
+    int count;
+    u32 *volt_table;
 
 	c->dev = &pdev->dev;
 	for (i = 0; i < c->osm_table_size; i++) {
@@ -1006,6 +1009,41 @@ static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c)
 				c->osm_table[i - 1].frequency)
 			j = i;
 	}
+
+	if (c == &pwrcl_clk) {
+        snprintf(prop_name, sizeof(prop_name), "qcom,cpu-voltage-table-0");
+    } else if (c == &perfcl_clk) {
+        snprintf(prop_name, sizeof(prop_name), "qcom,cpu-voltage-table-1");
+    } else if (c == &perfpcl_clk) {
+        snprintf(prop_name, sizeof(prop_name), "qcom,cpu-voltage-table-2");
+    }
+
+	if (prop_name[0] != '\0') {
+        count = of_property_count_u32_elems(pdev->dev.of_node, prop_name);
+        
+        if (count > 0 && count == j) {
+            volt_table = kmalloc_array(count, sizeof(u32), GFP_KERNEL);
+            
+            if (volt_table) {
+                of_property_read_u32_array(pdev->dev.of_node, prop_name, volt_table, count);
+                
+                for (i = 0; i < count; i++) {
+                    c->osm_table[i].open_loop_volt = volt_table[i];
+                    
+                    data = clk_osm_read_reg(c, VOLT_REG + i * OSM_REG_SIZE);
+                    data &= ~GENMASK(11, 0);
+                    data |= (volt_table[i] & GENMASK(11, 0));
+                    clk_osm_write_reg(c, data, VOLT_REG + i * OSM_REG_SIZE); 
+                }
+                
+                kfree(volt_table);
+                pr_info("DT read voltage: success override %s to Hardware!\n", prop_name);
+            }
+        } else if (count > 0) {
+            pr_err("DT read voltage: fail! override voltage %s (%d) not match from HW (%d)\n", 
+                   prop_name, count, j); 
+        }
+    }
 
 	osm_clks_init[c->cluster_num].rate_max = devm_kcalloc(&pdev->dev,
 						 j, sizeof(unsigned long),
