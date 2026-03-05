@@ -181,7 +181,6 @@ DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
 
 #ifdef CONFIG_SCHED_BORE
 uint __read_mostly sched_bore                   = 1;
-uint __read_mostly sched_burst_score_rounding   = 0;
 uint __read_mostly sched_burst_smoothness_long  = 1;
 uint __read_mostly sched_burst_smoothness_short = 0;
 uint __read_mostly sched_burst_fork_atavistic   = 2;
@@ -201,10 +200,7 @@ static inline u32 log2plus1_u64_u32f8(u64 v) {
 static inline u32 calc_burst_penalty(u64 burst_time) {
 	u32 greed, tolerance, penalty, scaled_penalty;
 	
-	greed = log2plus1_u64_u32f8(burst_time);
-	tolerance = sched_burst_penalty_offset << 8;
-	penalty = max(0, (s32)greed - (s32)tolerance);
-	scaled_penalty = penalty * sched_burst_penalty_scale >> 16;
+	se->burst_score = se->burst_penalty >> 2;
 
 	return min(MAX_BURST_PENALTY, scaled_penalty);
 }
@@ -213,10 +209,21 @@ static inline u64 scale_slice(u64 delta, struct sched_entity *se) {
 	return mul_u64_u32_shr(delta, sched_prio_to_wmult[se->burst_score], 22);
 }
 
+static inline struct task_struct *task_of(struct sched_entity *se);
+
 static void update_burst_score(struct sched_entity *se) {
+	if (!entity_is_task(se)) return;
+	struct task_struct *p = task_of(se);
+	u8 prio = p->static_prio - MAX_RT_PRIO;
+	u8 prev_prio = min(39, prio + se->burst_score);
+
 	u32 penalty = se->burst_penalty;
 	if (sched_burst_score_rounding) penalty += 0x2U;
 	se->burst_score = penalty >> 2;
+
+	u8 new_prio = min(39, prio + se->burst_score);
+	if (new_prio != prev_prio)
+	reweight_task(p, new_prio);
 }
 
 static void update_burst_penalty(struct sched_entity *se) {
@@ -827,10 +834,6 @@ static inline u64 calc_delta_fair(u64 delta, struct sched_entity *se)
 	if (unlikely(se->load.weight != NICE_0_LOAD))
 		delta = __calc_delta(delta, NICE_0_LOAD, &se->load);
 
-#ifdef CONFIG_SCHED_BORE
-	if (likely(sched_bore)) delta = scale_slice(delta, se);
-#endif
-
 	return delta;
 }
 
@@ -1094,7 +1097,7 @@ static void update_curr(struct cfs_rq *cfs_rq)
 	curr->burst_time += delta_exec;
 	update_burst_penalty(curr);
 	curr->vruntime += max(1ULL, calc_delta_fair(delta_exec, curr));
-#else // CONFIG_SCHED_BORE
+#else
 	curr->vruntime += calc_delta_fair(delta_exec, curr);
 #endif
 	update_min_vruntime(cfs_rq);
@@ -5694,7 +5697,9 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 
 #ifdef CONFIG_SCHED_BORE
 	if (task_sleep) {
-		update_curr(cfs_rq_of(se));
+		cfs_rq = cfs_rq_of(se);
+		if (cfs_rq->curr == se)
+			update_curr(cfs_rq);
 		restart_burst(se);
 	}
 #endif
