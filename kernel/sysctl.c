@@ -164,8 +164,8 @@ extern uint sched_burst_fork_atavistic;
 extern uint sched_burst_penalty_offset;
 extern uint sched_burst_penalty_scale;
 extern uint sched_burst_cache_lifetime;
-static uint sixty_four     = 64;
-static uint maxval_12_bits = 4095;
+static int __maybe_unused sixty_four     = 64;
+static int __maybe_unused maxval_12_bits = 4095;
 #endif
 
 /*this is needed for proc_doulongvec_minmax of sysctl_hung_task_timeout_secs */
