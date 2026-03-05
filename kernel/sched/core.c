@@ -2300,7 +2300,7 @@ extern bool sched_bore;
 extern u8   sched_burst_fork_atavistic;
 extern uint sched_burst_cache_lifetime;
 
-void __init sched_init_bore(void) {
+static void __init sched_init_bore(void) {
 	init_task.se.burst_time = 0;
 	init_task.se.prev_burst_penalty = 0;
 	init_task.se.curr_burst_penalty = 0;
@@ -6662,7 +6662,7 @@ void __init sched_init(void)
 
 #ifdef CONFIG_SCHED_BORE
 	sched_init_bore();
-	printk(KERN_INFO "BORE (Burst-Oriented Response Enhancer) CPU Scheduler modification 4.1.13 by Masahito Suzuki");
+	printk(KERN_INFO "BORE (Burst-Oriented Response Enhancer) CPU Scheduler modification 4.2.1 by Masahito Suzuki");
 #endif
 	sched_clock_init();
 	wait_bit_init();
