@@ -135,11 +135,11 @@ enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_L
  * (CFS  default: 0.75 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
 #ifdef CONFIG_SCHED_BORE
-unsigned int sysctl_sched_min_granularity			= 3000000ULL;
-unsigned int normalized_sysctl_sched_min_granularity	= 3000000ULL;
-#else // CONFIG_SCHED_BORE
-unsigned int sysctl_sched_min_granularity			= 750000ULL;
-unsigned int normalized_sysctl_sched_min_granularity	= 750000ULL;
+unsigned int sysctl_sched_min_granularity               = 1000000000ULL / HZ;
+unsigned int normalized_sysctl_sched_min_granularity    = 1000000000ULL / HZ;
+#else
+unsigned int sysctl_sched_min_granularity               = 750000ULL;
+unsigned int normalized_sysctl_sched_min_granularity    = 750000ULL;
 #endif
 
 /*
@@ -181,6 +181,7 @@ DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
 
 #ifdef CONFIG_SCHED_BORE
 uint __read_mostly sched_bore                   = 1;
+uint __read_mostly sched_burst_exclude_kthreads = 1;
 uint __read_mostly sched_burst_smoothness_long  = 1;
 uint __read_mostly sched_burst_smoothness_short = 0;
 uint __read_mostly sched_burst_fork_atavistic   = 2;
@@ -791,6 +792,7 @@ static void update_burst_score(struct sched_entity *se) {
     struct task_struct *p;
     u8 prio, prev_prio;
     u32 penalty;
+	u8 burst_score = 0;
 
     if (!entity_is_task(se)) return;
     
@@ -799,6 +801,9 @@ static void update_burst_score(struct sched_entity *se) {
     prev_prio = min(39, prio + se->burst_score);
 
     penalty = se->burst_penalty;
+	if (!((p->flags & PF_KTHREAD) && likely(sched_burst_exclude_kthreads))) {
+        burst_score = penalty >> 2;
+    }
     se->burst_score = penalty >> 2;
 	/* Kernel 4.14 doesn't have globally exported reweight_task().
      * We safely comment this out; BORE's scale_slice handles the heavy lifting.
