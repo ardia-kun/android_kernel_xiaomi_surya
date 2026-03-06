@@ -2308,11 +2308,11 @@ static void __init sched_init_bore(void) {
 	init_task.se.child_burst_last_cached = 0;
 }
 
-void inline sched_fork_bore(struct task_struct *p) {
-	p->se.burst_time = 0;
-	p->se.curr_burst_penalty = 0;
-	p->se.burst_score = 0;
-	p->se.child_burst_last_cached = 0;
+static inline void sched_fork_bore(struct task_struct *p) {
+    p->se.burst_time = 0;
+    p->se.curr_burst_penalty = 0;
+    p->se.burst_score = 0;
+    p->se.child_burst_last_cached = 0;
 }
 
 static u32 count_child_tasks(struct task_struct *p) {
@@ -2421,9 +2421,9 @@ static inline void inherit_burst(struct task_struct *p) {
 }
 
 static void sched_post_fork_bore(struct task_struct *p) {
-	if (p->sched_class == &fair_sched_class)
-		inherit_burst(p);
-	p->se.burst_penalty = p->se.prev_burst_penalty;
+    if (p->sched_class == &fair_sched_class)
+        inherit_burst(p);
+    p->se.burst_penalty = p->se.prev_burst_penalty;
 }
 #endif
 
@@ -2741,6 +2741,10 @@ void wake_up_new_task(struct task_struct *p)
 {
 	struct rq_flags rf;
 	struct rq *rq;
+
+#ifdef CONFIG_SCHED_BORE
+    sched_post_fork_bore(p);
+#endif
 
 	add_new_task_to_grp(p);
 	raw_spin_lock_irqsave(&p->pi_lock, rf.flags);
@@ -6663,7 +6667,7 @@ void __init sched_init(void)
 
 #ifdef CONFIG_SCHED_BORE
 	sched_init_bore();
-	printk(KERN_INFO "BORE (Burst-Oriented Response Enhancer) CPU Scheduler modification 5.1.0 by Masahito Suzuki");
+	printk(KERN_INFO "BORE (Burst-Oriented Response Enhancer) CPU Scheduler modification 5.2.11+ by Masahito Suzuki");
 #endif
 	sched_clock_init();
 	wait_bit_init();
