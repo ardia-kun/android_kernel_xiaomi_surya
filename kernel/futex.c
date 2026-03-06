@@ -2744,8 +2744,14 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 		 * is no timeout, or if it has yet to expire.
 		 */
 		if (!timeout || timeout->task)
+#ifdef CONFIG_SCHED_BORE
+            current->se.futex_waiting = true;
+#endif
 			freezable_schedule();
-	}
+#ifdef CONFIG_SCHED_BORE
+            current->se.futex_waiting = false;
+        }
+#endif
 	__set_current_state(TASK_RUNNING);
 }
 
