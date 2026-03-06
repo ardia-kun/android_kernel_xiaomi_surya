@@ -5708,12 +5708,12 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	int task_sleep = flags & DEQUEUE_SLEEP;
 
 #ifdef CONFIG_SCHED_BORE
-	if (task_sleep) {
-		cfs_rq = cfs_rq_of(se);
-		if (cfs_rq->curr == se)
-			update_curr(cfs_rq);
-		restart_burst(se);
-	}
+    if (task_sleep) {
+        struct cfs_rq *cfs_rq = cfs_rq_of(se);
+        if (cfs_rq->curr == se)
+            update_curr(cfs_rq);
+        restart_burst(se);
+    }
 #endif
 
 	/*
@@ -9023,6 +9023,10 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 
 	find_matching_se(&se, &pse);
 	update_curr(cfs_rq_of(se));
+#ifdef CONFIG_SCHED_BORE
+    if (likely(sched_bore) && pse->futex_waiting)
+        goto preempt;
+#endif
 	BUG_ON(!pse);
 
 #ifdef CONFIG_SCHED_EEVDF
