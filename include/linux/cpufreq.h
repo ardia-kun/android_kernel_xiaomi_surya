@@ -286,6 +286,10 @@ struct cpufreq_driver {
 					unsigned int index);
 	unsigned int	(*fast_switch)(struct cpufreq_policy *policy,
 				       unsigned int target_freq);
+	void		(*adjust_perf)(unsigned int cpu,
+				       unsigned long min_perf,
+				       unsigned long target_perf,
+				       unsigned long capacity);
 
 	/*
 	 * Caches and returns the lowest driver-supported frequency greater than
@@ -376,6 +380,14 @@ struct cpufreq_driver {
  * set.
  */
 #define CPUFREQ_NO_AUTO_DYNAMIC_SWITCHING (1 << 6)
+#define CPUFREQ_NEED_UPDATE_LIMITS	(1 << 7)
+
+bool cpufreq_driver_test_flags(u16 flags);
+void cpufreq_driver_adjust_perf(unsigned int cpu,
+				 unsigned long min_perf,
+				 unsigned long target_perf,
+				 unsigned long capacity);
+bool cpufreq_driver_has_adjust_perf(void);
 
 int cpufreq_register_driver(struct cpufreq_driver *driver_data);
 int cpufreq_unregister_driver(struct cpufreq_driver *driver_data);
@@ -563,6 +575,11 @@ struct gov_attr_set {
 	int usage_count;
 };
 
+static inline struct gov_attr_set *to_gov_attr_set(struct kobject *kobj)
+{
+	return container_of(kobj, struct gov_attr_set, kobj);
+}
+
 /* sysfs ops for cpufreq governors */
 extern const struct sysfs_ops governor_sysfs_ops;
 
@@ -587,6 +604,11 @@ static inline bool cpufreq_can_do_remote_dvfs(struct cpufreq_policy *policy)
 	 */
 	return policy->dvfs_possible_from_any_cpu ||
 		cpumask_test_cpu(smp_processor_id(), policy->cpus);
+}
+
+static inline bool cpufreq_this_cpu_can_update(struct cpufreq_policy *policy)
+{
+	return cpufreq_can_do_remote_dvfs(policy);
 }
 
 /*********************************************************************

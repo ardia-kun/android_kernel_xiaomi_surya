@@ -1745,6 +1745,19 @@ void cpufreq_resume(void)
 }
 
 /**
+ * cpufreq_driver_test_flags - Test cpufreq driver's flags against given ones.
+ * @flags: Flags to test against the current cpufreq driver's flags.
+ *
+ * Assumes that the driver is there, so callers must ensure that this is the
+ * case.
+ */
+bool cpufreq_driver_test_flags(u16 flags)
+{
+	return !!(cpufreq_driver->flags & flags);
+}
+EXPORT_SYMBOL_GPL(cpufreq_driver_test_flags);
+
+/**
  *	cpufreq_get_current_driver - return current driver's name
  *
  *	Return the name string of the currently loaded cpufreq driver
@@ -1911,6 +1924,47 @@ unsigned int cpufreq_driver_fast_switch(struct cpufreq_policy *policy,
 }
 EXPORT_SYMBOL_GPL(cpufreq_driver_fast_switch);
 
+/**
+ * cpufreq_driver_adjust_perf - Adjust CPU performance level in one go.
+ * @cpu: Target CPU.
+ * @min_perf: Minimum (required) performance level (units of @capacity).
+ * @target_perf: Terget (desired) performance level (units of @capacity).
+ * @capacity: Capacity of the target CPU.
+ *
+ * Carry out a fast performance level switch of @cpu without sleeping.
+ *
+ * The driver's ->adjust_perf() callback invoked by this function must be
+ * suitable for being called from within RCU-sched read-side critical sections
+ * and it is expected to select a suitable performance level equal to or above
+ * @min_perf and preferably equal to or below @target_perf.
+ *
+ * This function must not be called if policy->fast_switch_enabled is unset.
+ *
+ * Governors calling this function must guarantee that it will never be invoked
+ * twice in parallel for the same CPU and that it will never be called in
+ * parallel with either ->target() or ->target_index() or ->fast_switch() for
+ * the same CPU.
+ */
+void cpufreq_driver_adjust_perf(unsigned int cpu,
+				 unsigned long min_perf,
+				 unsigned long target_perf,
+				 unsigned long capacity)
+{
+	cpufreq_driver->adjust_perf(cpu, min_perf, target_perf, capacity);
+}
+EXPORT_SYMBOL_GPL(cpufreq_driver_adjust_perf);
+
+/**
+ * cpufreq_driver_has_adjust_perf - Check "direct fast switch" callback.
+ *
+ * Return 'true' if the ->adjust_perf callback is present for the
+ * current driver or 'false' otherwise.
+ */
+bool cpufreq_driver_has_adjust_perf(void)
+{
+	return !!cpufreq_driver->adjust_perf;
+}
+EXPORT_SYMBOL_GPL(cpufreq_driver_has_adjust_perf);
 /* Must set freqs->new to intermediate frequency */
 static int __target_intermediate(struct cpufreq_policy *policy,
 				 struct cpufreq_freqs *freqs, int index)

@@ -2533,6 +2533,7 @@ static inline void cpufreq_update_util(struct rq *rq, unsigned int flags)
 static inline void cpufreq_update_util(struct rq *rq, unsigned int flags) {}
 #endif /* CONFIG_CPU_FREQ */
 
+
 #ifdef CONFIG_SCHED_WALT
 
 static inline bool
@@ -2551,6 +2552,7 @@ walt_task_in_cum_window_demand(struct rq *rq, struct task_struct *p)
 #else /* arch_scale_freq_capacity */
 #define arch_scale_freq_invariant()	(false)
 #endif
+
 
 enum sched_boost_policy {
 	SCHED_BOOST_NONE,
