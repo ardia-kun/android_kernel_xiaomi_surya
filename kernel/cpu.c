@@ -7,6 +7,7 @@
 #include <linux/smp.h>
 #include <linux/init.h>
 #include <linux/notifier.h>
+#include <linux/sched/loadavg.h>
 #include <linux/sched/signal.h>
 #include <linux/sched/hotplug.h>
 #include <linux/sched/task.h>
@@ -1115,9 +1116,18 @@ static int do_cpu_down(unsigned int cpu, enum cpuhp_state target)
 
 int cpu_down(unsigned int cpu)
 {
-	return do_cpu_down(cpu, CPUHP_OFFLINE);
+    unsigned long loads[3];
+    unsigned long current_load;
+
+    get_avenrun(loads, 0, 0);
+    current_load = loads[0] >> FSHIFT;
+
+    if (current_load >= 3 && cpu > 0) {
+        return -EBUSY; 
+    }
+
+    return do_cpu_down(cpu, CPUHP_OFFLINE);
 }
-EXPORT_SYMBOL(cpu_down);
 
 #else
 #define takedown_cpu		NULL
