@@ -63,6 +63,15 @@ static bool zswap_is_page_same_filled(void *ptr, unsigned long *value)
 	return true;
 }
 
+static void zswap_fill_page(void *ptr, unsigned long value)
+{
+	unsigned long *page = ptr;
+	unsigned int i;
+
+	for (i = 0; i < PAGE_SIZE / sizeof(unsigned long); i++)
+		page[i] = value;
+}
+
 static bool zswap_can_accept(void)
 {
 	return !zswap_pool_reached_full;
@@ -105,7 +114,11 @@ static u64 zswap_duplicate_entry;
 #define ZSWAP_PARAM_UNSET ""
 
 /* Enable/disable zswap (disabled by default) */
+#ifdef CONFIG_ZSWAP_DEFAULT_ON
+static bool zswap_enabled = true;
+#else
 static bool zswap_enabled;
+#endif
 static int zswap_enabled_param_set(const char *,
 				   const struct kernel_param *);
 static struct kernel_param_ops zswap_enabled_param_ops = {
@@ -115,7 +128,11 @@ static struct kernel_param_ops zswap_enabled_param_ops = {
 module_param_cb(enabled, &zswap_enabled_param_ops, &zswap_enabled, 0644);
 
 /* Crypto compressor to use */
+#ifdef CONFIG_ZSWAP_COMPRESSOR_DEFAULT
+#define ZSWAP_COMPRESSOR_DEFAULT CONFIG_ZSWAP_COMPRESSOR_DEFAULT
+#else
 #define ZSWAP_COMPRESSOR_DEFAULT "lzo"
+#endif
 static char *zswap_compressor = ZSWAP_COMPRESSOR_DEFAULT;
 static int zswap_compressor_param_set(const char *,
 				      const struct kernel_param *);
@@ -128,7 +145,11 @@ module_param_cb(compressor, &zswap_compressor_param_ops,
 		&zswap_compressor, 0644);
 
 /* Compressed storage zpool to use */
+#ifdef CONFIG_ZSWAP_ZPOOL_DEFAULT
+#define ZSWAP_ZPOOL_DEFAULT CONFIG_ZSWAP_ZPOOL_DEFAULT
+#else
 #define ZSWAP_ZPOOL_DEFAULT "zbud"
+#endif
 static char *zswap_zpool_type = ZSWAP_ZPOOL_DEFAULT;
 static int zswap_zpool_param_set(const char *, const struct kernel_param *);
 static struct kernel_param_ops zswap_zpool_param_ops = {
@@ -1304,6 +1325,14 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 	}
 	spin_unlock(&tree->lock);
 
+	if (!entry->length) {
+		dst = kmap_atomic(page);
+		zswap_fill_page(dst, entry->value);
+		kunmap_atomic(dst);
+		ret = 0;
+		goto stats;
+	}
+
 	dlen = PAGE_SIZE;
 	
 	src = (u8 *)zpool_map_handle(entry->pool->zpool, entry->handle, ZPOOL_MM_RO);
@@ -1318,6 +1347,7 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 
 	BUG_ON(ret);
 
+stats:
 	spin_lock(&tree->lock);
 	if (!ret && zswap_exclusive_loads_enabled) {
 		zswap_invalidate_entry(tree, entry);
