@@ -288,7 +288,7 @@ static bool zswap_has_pool;
 
 #define zswap_pool_debug(msg, p)				\
 	pr_debug("%s pool %s/%s\n", msg, (p)->tfm_name,		\
-		 zpool_get_type((p)->zpools[0]))
+		 zpool_get_type((p)->zpool))
 
 static int zswap_writeback_entry(struct zswap_entry *entry,
 				 struct zswap_tree *tree);
@@ -311,7 +311,7 @@ static void zswap_update_total_size(void)
 
 	list_for_each_entry_rcu(pool, &zswap_pools, list)
 		for (i = 0; i < ZSWAP_NR_ZPOOLS; i++)
-			total += zpool_get_total_size(pool->zpools[i]);
+			total += zpool_get_total_size(pool->zpool);
 
 	rcu_read_unlock();
 
@@ -409,16 +409,6 @@ static bool zswap_rb_erase(struct rb_root *root, struct zswap_entry *entry)
 		return true;
 	}
 	return false;
-}
-
-static struct zpool *zswap_find_zpool(struct zswap_entry *entry)
-{
-	int i = 0;
-
-	if (ZSWAP_NR_ZPOOLS > 1)
-		i = hash_ptr(entry, ilog2(ZSWAP_NR_ZPOOLS));
-
-	return entry->pool->zpools[i];
 }
 
 /*
@@ -601,7 +591,7 @@ static struct zswap_pool *zswap_pool_find_get(char *type, char *compressor)
 		if (strcmp(pool->tfm_name, compressor))
 			continue;
 		/* all zpools share the same type */
-		if (strcmp(zpool_get_type(pool->zpools[0]), type))
+		if (strcmp(zpool_get_type(pool->zpool), type))
 			continue;
 		/* if we can't get it, it's about to be destroyed */
 		if (!zswap_pool_get(pool))
@@ -1481,7 +1471,7 @@ static int __init init_zswap(void)
 	pool = __zswap_pool_create_fallback();
 	if (pool) {
 		pr_info("loaded using pool %s/%s\n", pool->tfm_name,
-			zpool_get_type(pool->zpools[0]));
+			zpool_get_type(pool->zpool));
 		list_add(&pool->list, &zswap_pools);
 		zswap_has_pool = true;
 	} else {
