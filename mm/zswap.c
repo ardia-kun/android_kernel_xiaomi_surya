@@ -45,6 +45,29 @@
 
 #include "internal.h"
 
+static atomic_t zswap_same_filled_pages = ATOMIC_INIT(0);
+static bool zswap_pool_reached_full;
+static struct workqueue_struct *zswap_shrink_wq;
+
+static bool zswap_is_page_same_filled(void *ptr, unsigned long *value)
+{
+	unsigned long *page = ptr;
+	unsigned long val = page[0];
+	unsigned int i;
+
+	for (i = 1; i < PAGE_SIZE / sizeof(unsigned long); i++) {
+		if (page[i] != val)
+			return false;
+	}
+	*value = val;
+	return true;
+}
+
+static bool zswap_can_accept(void)
+{
+	return !zswap_pool_reached_full;
+}
+
 /*********************************
 * statistics
 **********************************/
@@ -1018,7 +1041,7 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
 		spin_lock(&tree->lock);
 		if (zswap_rb_search(&tree->rbroot, swp_offset(entry->swpentry)) != entry) {
 			spin_unlock(&tree->lock);
-			delete_from_swap_cache(page_folio(page));
+			delete_from_swap_cache(page);
 			ret = -ENOMEM;
 			goto fail;
 		}
@@ -1078,16 +1101,30 @@ fail:
 static int zswap_shrink(void)
 {
 	struct zswap_pool *pool;
-	int ret;
+	struct zswap_entry *entry;
+	int ret = -ENOENT;
 
 	pool = zswap_pool_last_get();
 	if (!pool)
 		return -ENOENT;
 
-	ret = zpool_shrink(pool->zpool, 1, NULL);
+	spin_lock(&pool->lru_lock);
+	if (list_empty(&pool->lru)) {
+		spin_unlock(&pool->lru_lock);
+		goto out;
+	}
+	entry = list_last_entry(&pool->lru, struct zswap_entry, lru);
+	
+	zswap_entry_get(entry);
+	spin_unlock(&pool->lru_lock);
 
+	ret = zswap_writeback_entry(entry, zswap_trees[swp_type(entry->swpentry)]);
+
+	spin_lock(&pool->lru_lock);
+	zswap_entry_put(zswap_trees[swp_type(entry->swpentry)], entry);
+	spin_unlock(&pool->lru_lock);
+out:
 	zswap_pool_put(pool);
-
 	return ret;
 }
 
@@ -1451,6 +1488,11 @@ static int __init init_zswap(void)
 	frontswap_register_ops(&zswap_frontswap_ops);
 	if (zswap_debugfs_init())
 		pr_warn("debugfs initialization failed\n");
+
+	zswap_shrink_wq = create_workqueue("zswap-shrink");
+	if (!zswap_shrink_wq)
+		pr_err("Failed to create zswap shrink workqueue\n");
+	
 	return 0;
 
 hp_fail:

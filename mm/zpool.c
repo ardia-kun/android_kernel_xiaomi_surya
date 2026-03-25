@@ -347,6 +347,18 @@ bool zpool_can_sleep_mapped(struct zpool *zpool)
 	return zpool->driver->sleep_mapped;
 }
 
+/**
+ * zpool_malloc_support_movable - Test if zpool supports movable memory
+ * @zpool:	The zpool to test
+ *
+ * Returns: true if zpool supports movable memory; false otherwise.
+ */
+bool zpool_malloc_support_movable(struct zpool *zpool)
+{
+	return zpool->driver->malloc_support_movable;
+}
+EXPORT_SYMBOL(zpool_malloc_support_movable);
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Dan Streetman <ddstreet@ieee.org>");
 MODULE_DESCRIPTION("Common API for compressed memory storage");

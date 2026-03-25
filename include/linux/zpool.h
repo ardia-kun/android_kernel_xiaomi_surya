@@ -83,6 +83,7 @@ struct zpool_driver {
 				unsigned long *handle);
 	void (*free)(void *pool, unsigned long handle);
 
+	bool malloc_support_movable;
 	bool sleep_mapped;
 	void *(*map)(void *pool, unsigned long handle,
 				enum zpool_mapmode mm);
@@ -96,5 +97,7 @@ void zpool_register_driver(struct zpool_driver *driver);
 int zpool_unregister_driver(struct zpool_driver *driver);
 
 bool zpool_can_sleep_mapped(struct zpool *pool);
+
+bool zpool_malloc_support_movable(struct zpool *pool);
 
 #endif

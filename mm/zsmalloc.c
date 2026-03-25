@@ -1767,7 +1767,7 @@ static void migrate_zspage(struct zs_pool *pool, struct size_class *class,
 		 */
 		free_obj |= BIT(HANDLE_PIN_BIT);
 		record_obj(handle, free_obj);
-		obj_free(class, obj);
+		obj_free(class, used_obj);
 	}
 
 	/* Remember last position in this iteration */
@@ -1859,22 +1859,6 @@ static int zsmalloc_mount(void)
 static void zsmalloc_unmount(void)
 {
     kern_unmount(zsmalloc_mnt);
-}
-
-static void lock_zspage(struct zspage *zspage)
-{
-    struct page *page = zspage->first_page;
-    do {
-        lock_page(page);
-    } while ((page = get_next_page(page)) != NULL);
-}
-
-static void unlock_zspage(struct zspage *zspage)
-{
-    struct page *page = zspage->first_page;
-    do {
-        unlock_page(page);
-    } while ((page = get_next_page(page)) != NULL);
 }
 
 #endif /* CONFIG_COMPACTION */
@@ -2290,7 +2274,6 @@ static void SetZsPageMovable(struct zs_pool *pool, struct zspage *zspage)
 		unlock_page(page);
 	} while ((page = get_next_page(page)) != NULL);
 }
-#endif
 
 /*
  *
@@ -2413,63 +2396,6 @@ void zs_pool_stats(struct zs_pool *pool, struct zs_pool_stats *stats)
 	memcpy(stats, &pool->stats, sizeof(struct zs_pool_stats));
 }
 EXPORT_SYMBOL_GPL(zs_pool_stats);
-
-static unsigned long zs_shrinker_scan(struct shrinker *shrinker,
-		struct shrink_control *sc)
-{
-	unsigned long pages_freed;
-	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
-			shrinker);
-
-	/*
-	 * Compact classes and calculate compaction delta.
-	 * Can run concurrently with a manually triggered
-	 * (by user) compaction.
-	 */
-	pages_freed = zs_compact(pool);
-
-	return pages_freed ? pages_freed : SHRINK_STOP;
-}
-
-static unsigned long zs_shrinker_count(struct shrinker *shrinker,
-		struct shrink_control *sc)
-{
-	int i;
-	struct size_class *class;
-	unsigned long pages_to_free = 0;
-	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
-			shrinker);
-
-	for (i = ZS_SIZE_CLASSES - 1; i >= 0; i--) {
-		class = pool->size_class[i];
-		if (!class)
-			continue;
-		if (class->index != i)
-			continue;
-
-		pages_to_free += zs_can_compact(class);
-	}
-
-	return pages_to_free;
-}
-
-static void zs_unregister_shrinker(struct zs_pool *pool)
-{
-	if (pool->shrinker_enabled) {
-		unregister_shrinker(&pool->shrinker);
-		pool->shrinker_enabled = false;
-	}
-}
-
-static int zs_register_shrinker(struct zs_pool *pool)
-{
-	pool->shrinker.scan_objects = zs_shrinker_scan;
-	pool->shrinker.count_objects = zs_shrinker_count;
-	pool->shrinker.batch = 0;
-	pool->shrinker.seeks = DEFAULT_SEEKS;
-
-	return register_shrinker(&pool->shrinker);
-}
 
 static int calculate_zspage_chain_size(int class_size)
 {
@@ -2611,7 +2537,6 @@ struct zs_pool *zs_create_pool(const char *name)
 	 * Not critical, we still can use the pool
 	 * and user can trigger compaction manually.
 	 */
-	zs_register_shrinker(pool);
 
 	return pool;
 
@@ -2625,7 +2550,6 @@ void zs_destroy_pool(struct zs_pool *pool)
 {
 	int i;
 
-	zs_unregister_shrinker(pool);
 	zs_unregister_migration(pool);
 	zs_pool_stat_destroy(pool);
 
