@@ -1024,7 +1024,7 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
 			return -ENOMEM;
 	}
 
-	/* try to allocate swap cache page - Mengikuti logika Incoming */
+	/* try to allocate swap cache page */
 	page = __read_swap_cache_async(swpentry, GFP_KERNEL, NULL, 0,
 				       &page_was_allocated);
 	if (!page) {
@@ -1042,7 +1042,9 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
 	spin_lock(&tree->lock);
 	if (zswap_rb_search(&tree->rbroot, swp_offset(entry->swpentry)) != entry) {
 		spin_unlock(&tree->lock);
-		delete_from_swap_cache(page); /* 4.14 tidak kenal folio! */
+		delete_from_swap_cache(page);
+		unlock_page(page);
+		put_page(page);
 		ret = -ENOMEM;
 		goto fail;
 	}
