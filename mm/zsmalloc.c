@@ -136,6 +136,7 @@
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 
 #define ZS_MAX_PAGES_PER_ZSPAGE	(_AC(CONFIG_ZSMALLOC_CHAIN_SIZE, UL))
+#define ZsHugePage(zspage) (unlikely(zspage->class == ZS_SIZE_CLASSES - 1))
 
 /* ZS_MIN_ALLOC_SIZE must be multiple of ZS_ALIGN */
 #define ZS_MIN_ALLOC_SIZE \
@@ -541,8 +542,8 @@ static inline void set_freeobj(struct zspage *zspage, unsigned int obj)
 }
 
 static void get_zspage_mapping(struct zspage *zspage,
-			       unsigned int *class_idx,
-			       int *fullness)
+                               unsigned int *class_idx,
+                               enum fullness_group *fullness)
 {
 	BUG_ON(zspage->magic != ZSPAGE_MAGIC);
 
@@ -800,7 +801,7 @@ static void remove_zspage(struct size_class *class,
 	VM_BUG_ON(is_zspage_isolated(zspage));
 
 	list_del_init(&zspage->list);
-	zs_stat_dec(class, fullness, 1);
+	class_stat_dec(class, fullness, 1);
 }
 
 /*
@@ -815,7 +816,7 @@ static void remove_zspage(struct size_class *class,
 static int fix_fullness_group(struct size_class *class, struct zspage *zspage)
 {
 	int class_idx;
-	int currfg, newfg;
+	enum fullness_group currfg, newfg;
 
 	get_zspage_mapping(zspage, &class_idx, &currfg);
 	newfg = get_fullness_group(class, zspage);
@@ -1054,7 +1055,7 @@ static void __free_zspage(struct zs_pool *pool, struct size_class *class,
 				struct zspage *zspage)
 {
 	struct page *page, *next;
-	int fg;
+	enum fullness_group fg;
 	unsigned int class_idx;
 
 	get_zspage_mapping(zspage, &class_idx, &fg);
@@ -1423,8 +1424,8 @@ void *zs_map_object(struct zs_pool *pool, unsigned long handle,
 	unsigned long obj, off;
 	unsigned int obj_idx;
 
-	unsigned int class_idx;
-	enum fullness_group fg;
+	unsigned int class_idx __maybe_unused;
+	enum fullness_group fg __maybe_unused;
 	struct size_class *class;
 	struct mapping_area *area;
 	struct page *pages[2];
@@ -1485,8 +1486,8 @@ void zs_unmap_object(struct zs_pool *pool, unsigned long handle)
 	unsigned long obj, off;
 	unsigned int obj_idx;
 
-	unsigned int class_idx;
-	enum fullness_group fg;
+	unsigned int class_idx __maybe_unused;
+	enum fullness_group fg __maybe_unused;
 	struct size_class *class;
 	struct mapping_area *area;
 
@@ -1568,7 +1569,7 @@ static unsigned long obj_malloc(struct size_class *class,
 
 	kunmap_atomic(vaddr);
 	mod_zspage_inuse(zspage, 1);
-	zs_stat_inc(class, OBJ_USED, 1);
+	class_stat_inc(class, ZS_OBJS_ALLOCATED, 1);
 
 	obj = location_to_obj(m_page, obj);
 
@@ -1660,7 +1661,7 @@ static void obj_free(struct size_class *class, unsigned long obj, unsigned long 
     void *vaddr;
 
 	obj_to_location(obj, &f_page, &f_objidx);
-	f_offset = offset_in_page(class_size * f_objidx);
+	f_offset = offset_in_page(class->size * f_objidx);
 	zspage = get_zspage(f_page);
 
     vaddr = kmap_atomic(f_page);
@@ -1695,7 +1696,6 @@ void zs_free(struct zs_pool *pool, unsigned long handle)
 	struct page *f_page;
 	unsigned long obj;
 	unsigned int f_objidx;
-	int class_idx;
 	struct size_class *class;
 	int fullness;
 
@@ -1722,7 +1722,7 @@ void zs_free(struct zs_pool *pool, unsigned long handle)
 	}
 #endif
 
-	obj_free(class->size, obj, NULL);
+	obj_free(class, obj, NULL);
 
 	fullness = fix_fullness_group(class, zspage);
 
@@ -1983,6 +1983,8 @@ static struct file_system_type zsmalloc_fs = {
 	.kill_sb	= kill_anon_super,
 };
 
+static struct vfsmount *zsmalloc_mnt;
+
 static int zsmalloc_mount(void)
 {
 	int ret = 0;
@@ -2042,7 +2044,7 @@ static void putback_zspage_deferred(struct zs_pool *pool,
 	enum fullness_group fg;
 
 	fg = putback_zspage(class, zspage);
-	if (fg == ZS_EMPTY)
+	if (fg == ZS_INUSE_RATIO_0)
 		schedule_work(&pool->free_work);
 
 }
@@ -2111,15 +2113,15 @@ bool zs_page_isolate(struct page *page, isolate_mode_t mode)
 	pool = mapping->private_data;
 	class = pool->size_class[class_idx];
 
-	spin_lock(&class->lock);
+	spin_lock(&pool->lock);
 	if (get_zspage_inuse(zspage) == 0) {
-		spin_unlock(&class->lock);
+		spin_unlock(&pool->lock);
 		return false;
 	}
 
 	/* zspage is isolated for object migration */
 	if (list_empty(&zspage->list) && !is_zspage_isolated(zspage)) {
-		spin_unlock(&class->lock);
+		spin_unlock(&pool->lock);
 		return false;
 	}
 
@@ -2134,7 +2136,7 @@ bool zs_page_isolate(struct page *page, isolate_mode_t mode)
 	}
 
 	inc_zspage_isolation(zspage);
-	spin_unlock(&class->lock);
+	spin_unlock(&pool->lock);
 
 	return true;
 }
@@ -2174,7 +2176,7 @@ int zs_page_migrate(struct address_space *mapping, struct page *newpage,
 	class = pool->size_class[class_idx];
 	offset = get_first_obj_offset(page);
 
-	spin_lock(&class->lock);
+	spin_lock(&pool->lock);
 	if (!get_zspage_inuse(zspage)) {
 		/*
 		 * Set "offset" to end of the page so that every loops
@@ -2261,7 +2263,7 @@ unpin_objects:
 		}
 	}
 	kunmap_atomic(s_addr);
-	spin_unlock(&class->lock);
+	spin_unlock(&pool->lock);
 	migrate_write_unlock(zspage);
 
 	return ret;
@@ -2284,7 +2286,7 @@ void zs_page_putback(struct page *page)
 	pool = mapping->private_data;
 	class = pool->size_class[class_idx];
 
-	spin_lock(&class->lock);
+	spin_lock(&pool->lock);
 	dec_zspage_isolation(zspage);
 	if (!is_zspage_isolated(zspage)) {
 		/*
@@ -2294,7 +2296,7 @@ void zs_page_putback(struct page *page)
 		putback_zspage_deferred(pool, class, zspage);
 		zs_pool_dec_isolated(pool);
 	}
-	spin_unlock(&class->lock);
+	spin_unlock(&pool->lock);
 }
 
 const struct address_space_operations zsmalloc_aops = {
@@ -2359,7 +2361,7 @@ static void async_free_zspage(struct work_struct *work)
 	int i;
 	struct size_class *class;
 	unsigned int class_idx;
-	int fullness;
+	enum fullness_group fullness;
 	struct zspage *zspage, *tmp;
 	LIST_HEAD(free_pages);
 	struct zs_pool *pool = container_of(work, struct zs_pool,
@@ -2460,7 +2462,7 @@ static unsigned long __zs_compact(struct zs_pool *pool,
 		if (!src_zspage)
 			break;
 
-		migrate_write_lock_nested(src_zspage);
+		migrate_write_lock(src_zspage);
 
 		cc.obj_idx = 0;
 		cc.s_page = get_first_page(src_zspage);
@@ -2710,7 +2712,6 @@ struct zs_pool *zs_create_pool(const char *name)
 		class->index = i;
 		class->pages_per_zspage = pages_per_zspage;
 		class->objs_per_zspage = objs_per_zspage;
-		spin_lock_init(&class->lock);
 		pool->size_class[i] = class;
 
 		fullness = ZS_INUSE_RATIO_0;
