@@ -669,6 +669,9 @@ static int zswap_reclaim_entry(struct zswap_pool *pool)
 		goto put_unlock;
 	}
 
+	if (!zswap_enabled)
+		return false;
+
 	/*
 	 * Writeback started successfully, the page now belongs to the
 	 * swapcache. Drop the entry from zswap - unless invalidate already
@@ -1140,9 +1143,9 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 		goto reject;
 	}
 
-	if (!zswap_enabled || !tree) {
-		ret = -ENODEV;
-		goto reject;
+	if (!tree) {
+    ret = -ENODEV;
+    goto reject;
 	}
 
 	spin_lock(&tree->lock);
