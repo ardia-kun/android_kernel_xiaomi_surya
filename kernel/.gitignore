@@ -1,8 +1,10 @@
 #
 # Generated files
 #
-config_data.h
-config_data.gz
+config_data_real.h
+config_data_real.gz
+config_data_fake.h
+config_data_fake.gz
 kheaders.md5
 timeconst.h
 hz.bc

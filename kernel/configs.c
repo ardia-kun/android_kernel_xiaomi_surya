@@ -29,6 +29,7 @@
 #include <linux/seq_file.h>
 #include <linux/init.h>
 #include <linux/uaccess.h>
+#include <linux/sched.h>
 
 /**************************************************/
 /* the actual current config file                 */
@@ -45,12 +46,17 @@
  */
 #define MAGIC_START	"IKCFG_ST"
 #define MAGIC_END	"IKCFG_ED"
-#include "config_data.h"
-
+#include "config_data_real.h"
+#include "config_data_fake.h"
 
 #define MAGIC_SIZE (sizeof(MAGIC_START) - 1)
+#define kernel_config_data_real_size \
+	(sizeof(kernel_config_data_real) - 1 - MAGIC_SIZE * 2)
+#define kernel_config_data_fake_size \
+	(sizeof(kernel_config_data_fake) - 1 - MAGIC_SIZE * 2)
 #define kernel_config_data_size \
-	(sizeof(kernel_config_data) - 1 - MAGIC_SIZE * 2)
+	(sizeof(kernel_config_data_real) > sizeof(kernel_config_data_fake) ? \
+	 kernel_config_data_real_size : kernel_config_data_fake_size)
 
 #ifdef CONFIG_IKCONFIG_PROC
 
@@ -58,9 +64,18 @@ static ssize_t
 ikconfig_read_current(struct file *file, char __user *buf,
 		      size_t len, loff_t * offset)
 {
-	return simple_read_from_buffer(buf, len, offset,
-				       kernel_config_data + MAGIC_SIZE,
-				       kernel_config_data_size);
+	const char *data;
+	size_t size;
+
+	if (!strcmp(current->comm, "system_server")) {
+		data = kernel_config_data_fake + MAGIC_SIZE;
+		size = kernel_config_data_fake_size;
+	} else {
+		data = kernel_config_data_real + MAGIC_SIZE;
+		size = kernel_config_data_real_size;
+	}
+
+	return simple_read_from_buffer(buf, len, offset, data, size);
 }
 
 static const struct file_operations ikconfig_file_ops = {

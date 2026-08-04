@@ -116,16 +116,25 @@ obj-$(CONFIG_TORTURE_TEST) += torture.o
 
 obj-$(CONFIG_HAS_IOMEM) += memremap.o
 
-$(obj)/configs.o: $(obj)/config_data.h
+$(obj)/configs.o: $(obj)/config_data_real.h $(obj)/config_data_fake.h
 
-targets += config_data.gz
-$(obj)/config_data.gz: $(KCONFIG_CONFIG) FORCE
+targets += config_data_real.gz config_data_fake.gz
+
+STOCK_DEFCONFIG ?= arch/arm64/configs/surya_defconfig
+
+$(obj)/config_data_real.gz: $(KCONFIG_CONFIG) FORCE
 	$(call if_changed,gzip)
 
-      filechk_ikconfiggz = (echo "static const char kernel_config_data[] __used = MAGIC_START"; cat $< | scripts/basic/bin2c; echo "MAGIC_END;")
-targets += config_data.h
-$(obj)/config_data.h: $(obj)/config_data.gz FORCE
-	$(call filechk,ikconfiggz)
+$(obj)/config_data_fake.gz: $(STOCK_DEFCONFIG) FORCE
+	$(call if_changed,gzip)
+
+      filechk_ikconfiggz_real = (echo "static const char kernel_config_data_real[] __used = MAGIC_START"; cat $< | scripts/basic/bin2c; echo "MAGIC_END;")
+      filechk_ikconfiggz_fake = (echo "static const char kernel_config_data_fake[] __used = MAGIC_START"; cat $< | scripts/basic/bin2c; echo "MAGIC_END;")
+targets += config_data_real.h config_data_fake.h
+$(obj)/config_data_real.h: $(obj)/config_data_real.gz FORCE
+	$(call filechk,ikconfiggz_real)
+$(obj)/config_data_fake.h: $(obj)/config_data_fake.gz FORCE
+	$(call filechk,ikconfiggz_fake)
 
 $(obj)/kheaders.o: $(obj)/kheaders_data.tar.xz
 
