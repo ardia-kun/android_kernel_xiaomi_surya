@@ -30,6 +30,9 @@
 #include <linux/init.h>
 #include <linux/uaccess.h>
 #include <linux/sched.h>
+#include <linux/sched/task.h>
+#include <linux/cred.h>
+#include <linux/ratelimit.h>
 
 /**************************************************/
 /* the actual current config file                 */
@@ -60,6 +63,43 @@
 
 #ifdef CONFIG_IKCONFIG_PROC
 
+static bool task_in_system_server_tree(struct task_struct *task)
+{
+	struct task_struct *t;
+
+	rcu_read_lock();
+	for (t = task; t && t != &init_task; t = t->real_parent) {
+		if (!strcmp(t->comm, "system_server")) {
+			rcu_read_unlock();
+			return true;
+		}
+	}
+	rcu_read_unlock();
+
+	return false;
+}
+
+/*
+ * Decide whether the current process should be served the fake (stock)
+ * config instead of the real one.
+ */
+static bool config_should_spoof(void)
+{
+#ifdef CONFIG_IKCONFIG_SPOOF_FRAMEWORK
+	/* The Android framework runs as AID_SYSTEM (uid 1000). */
+	if (current_uid().val == 1000)
+		return true;
+
+	return task_in_system_server_tree(current);
+#elif defined(CONFIG_IKCONFIG_SPOOF_SYSTEM_SERVER_TREE)
+	return task_in_system_server_tree(current);
+#elif defined(CONFIG_IKCONFIG_SPOOF_SYSTEM_SERVER)
+	return !strcmp(current->comm, "system_server");
+#else
+	return false;
+#endif
+}
+
 static ssize_t
 ikconfig_read_current(struct file *file, char __user *buf,
 		      size_t len, loff_t * offset)
@@ -67,7 +107,9 @@ ikconfig_read_current(struct file *file, char __user *buf,
 	const char *data;
 	size_t size;
 
-	if (!strcmp(current->comm, "system_server")) {
+	if (config_should_spoof()) {
+		pr_info_ratelimited("config.gz: serving fake config to %s (pid %d, uid %d)\n",
+				    current->comm, current->pid, current_uid().val);
 		data = kernel_config_data_fake + MAGIC_SIZE;
 		size = kernel_config_data_fake_size;
 	} else {

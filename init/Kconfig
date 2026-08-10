@@ -342,6 +342,41 @@ config AUDIT_TREE
 	depends on AUDITSYSCALL
 	select FSNOTIFY
 
+choice
+	prompt "Spoof /proc/config.gz scope"
+	default IKCONFIG_SPOOF_FRAMEWORK
+	help
+	  Select which processes are served the stock (fake) kernel config
+	  from /proc/config.gz instead of the real one. Every process that
+	  is not matched keeps seeing the real kernel config. This only has
+	  an effect when CONFIG_IKCONFIG_PROC is enabled and a stock config
+	  is embedded (see kernel/configs.c).
+
+config IKCONFIG_SPOOF_DISABLED
+	bool "None"
+	help
+	  Serve the real kernel config to every process.
+
+config IKCONFIG_SPOOF_SYSTEM_SERVER
+	bool "system_server only"
+	help
+	  Only the process named system_server gets the fake config.
+
+config IKCONFIG_SPOOF_SYSTEM_SERVER_TREE
+	bool "system_server + its descendants"
+	help
+	  The process named system_server and anything it forked (walking
+	  the real_parent ancestry) gets the fake config.
+
+config IKCONFIG_SPOOF_FRAMEWORK
+	bool "Android framework (system_server tree + system uid)"
+	help
+	  The system_server process tree plus every process running as the
+	  system user (AID_SYSTEM, uid 1000) gets the fake config. This
+	  covers system_server itself, its native children, systemui and
+	  all other framework components running as uid 1000.
+
+endchoice
 source "kernel/irq/Kconfig"
 source "kernel/time/Kconfig"
 
