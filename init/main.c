@@ -1001,6 +1001,63 @@ static int __init set_debug_rodata(char *str)
 __setup("rodata=", set_debug_rodata);
 #endif
 
+static bool no_init_protection = false;
+
+static int __init set_no_init_protection(char *val)
+{
+	int tmp = no_init_protection;
+
+	if (get_option(&val, &tmp)) {
+		no_init_protection = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("no_init_protection=", set_no_init_protection);
+
+bool init_protection_enabled(void)
+{
+	return !no_init_protection;
+}
+
+static bool init_debug = false;
+
+static int __init set_init_debug(char *val)
+{
+	int tmp = init_debug;
+
+	if (get_option(&val, &tmp)) {
+		init_debug = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("init_debug=", set_init_debug);
+
+bool is_init_debug_enabled(void)
+{
+	return init_debug;
+}
+
+static bool force_perm = false;
+
+static int __init set_force_perm(char *val)
+{
+	int tmp = force_perm;
+
+	if (get_option(&val, &tmp)) {
+		force_perm = tmp != 0;
+	}
+
+	return 0;
+}
+__setup("force_perm=", set_force_perm);
+
+bool is_force_perm_enabled(void)
+{
+	return force_perm;
+}
+
 #ifdef CONFIG_STRICT_KERNEL_RWX
 static void mark_readonly(void)
 {
