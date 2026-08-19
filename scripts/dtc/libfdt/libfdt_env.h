@@ -1,5 +1,5 @@
-#ifndef LIBFDT_ENV_H
-#define LIBFDT_ENV_H
+#ifndef _LIBFDT_ENV_H
+#define _LIBFDT_ENV_H
 /*
  * libfdt - Flat Device Tree manipulation
  * Copyright (C) 2006 David Gibson, IBM Corporation.
@@ -136,4 +136,4 @@ static inline size_t fdt_strnlen(const char *string, size_t max_count)
 
 #endif /* __APPLE__ */
 
-#endif /* LIBFDT_ENV_H */
+#endif /* _LIBFDT_ENV_H */
