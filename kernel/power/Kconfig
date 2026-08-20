@@ -350,3 +350,16 @@ config BOEFFLA_WL_BLOCKER
 	  FranciscoFranco's non-generic driver. Allows blocking
 	  wakelocks via sysfs interface at
 	  /sys/class/misc/boeffla_wakelock_blocker/
+
+config WAKELOCK_GOVERNOR
+	bool "Wakelock Governor"
+	depends on PM_WAKELOCKS
+	default y
+	help
+	  Limits maximum wakelock hold time to prevent battery drain
+	  from misbehaving applications.
+
+	  Provides sysfs at /sys/kernel/wakelock_governor/ for runtime
+	  configuration. Default timeout is 60 seconds.
+
+	  Say Y if unsure.
