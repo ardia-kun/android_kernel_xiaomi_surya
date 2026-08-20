@@ -190,11 +190,6 @@ static int __init set_init_protection(char *val)
 }
 __setup("init_protection=", set_init_protection);
 
-bool init_protection_enabled(void)
-{
-	return init_protection;
-}
-
 static bool warm_reboot = false;
 
 static int __init set_warm_reboot(char *val)
