@@ -2634,6 +2634,8 @@ static void __ttwu_queue_remote(struct task_struct *p, int cpu, int wake_flags)
 	}
 }
 
+#endif /* SCHED_FEAT_TTWU_QUEUE */
+
 void wake_up_if_idle(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
@@ -2690,6 +2692,7 @@ static void ttwu_queue(struct task_struct *p, int cpu, int wake_flags)
 	if (ttwu_queue_remote(p, cpu, wake_flags))
 		return;
 #endif
+#endif /* CONFIG_SMP */
 
 	rq_lock(rq, &rf);
 	update_rq_clock(rq);
