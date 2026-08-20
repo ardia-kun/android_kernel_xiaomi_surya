@@ -615,7 +615,6 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 	SDE_ATRACE_BEGIN("complete_commit");
 	complete_commit(commit);
 	SDE_ATRACE_END("complete_commit");
-	pm_qos_remove_request(&req);
 
 	complete_commit_cleanup(commit);
 }
