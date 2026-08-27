@@ -1021,6 +1021,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 			skb = skb_clone(skb, gfp_mask);
 		if (unlikely(!skb))
 			return -ENOBUFS;
+	}
 	skb->skb_mstamp = tp->tcp_mstamp;
 	tp->tcp_wstamp_ns = max(tp->tcp_wstamp_ns, tp->tcp_clock_cache);
 
