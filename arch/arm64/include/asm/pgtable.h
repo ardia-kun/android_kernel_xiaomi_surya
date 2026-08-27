@@ -740,9 +740,11 @@ extern pgd_t tramp_pg_dir[PTRS_PER_PGD];
  */
 #define MAX_SWAPFILES_CHECK() BUILD_BUG_ON(MAX_SWAPFILES_SHIFT > __SWP_TYPE_BITS)
 
-extern int kern_addr_valid(unsigned long addr);
-
-#define arch_has_hw_pte_young	cpu_has_hw_af
+#define arch_has_hw_pte_young arch_has_hw_pte_young
+static inline bool arch_has_hw_pte_young(void)
+{
+	return cpus_have_const_cap(ARM64_HW_DBM);
+}
 
 #include <asm-generic/pgtable.h>
 
