@@ -745,6 +745,10 @@ static int osm_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		goto err;
 	}
 
+	policy->min = 300000;
+	policy->cpuinfo.min_freq = 300000;
+	policy->user_policy.min = 300000;
+
 	policy->dvfs_possible_from_any_cpu = true;
 	policy->fast_switch_possible = true;
 	policy->driver_data = c;
