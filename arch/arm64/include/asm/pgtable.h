@@ -735,6 +735,9 @@ extern pgd_t tramp_pg_dir[PTRS_PER_PGD];
 #define __swp_entry_to_pte(swp)	((pte_t) { (swp).val })
 
 /*
+ * Ensure that there are not more swap files than can be encoded in the kernel
+ * PTEs.
+ */
 #define MAX_SWAPFILES_CHECK() BUILD_BUG_ON(MAX_SWAPFILES_SHIFT > __SWP_TYPE_BITS)
 
 extern int kern_addr_valid(unsigned long addr);
