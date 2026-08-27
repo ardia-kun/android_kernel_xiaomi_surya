@@ -778,8 +778,12 @@ static inline u32 tcp_time_stamp_raw(void)
  */
 static inline void tcp_mstamp_refresh(struct tcp_sock *tp)
 {
-	u64 val = tcp_clock_us();
+	u64 val = tcp_clock_ns();
 
+	if (val > tp->tcp_clock_cache)
+		tp->tcp_clock_cache = val;
+
+	val = div_u64(val, NSEC_PER_USEC);
 	if (val > tp->tcp_mstamp)
 		tp->tcp_mstamp = val;
 }
