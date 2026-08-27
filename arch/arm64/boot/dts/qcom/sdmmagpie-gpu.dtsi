@@ -37,6 +37,7 @@
 		opp-1353 { opp-hz = /bits/ 64 < 5161 >; }; /*  9.DDR:1353 MHz */
 		opp-1555 { opp-hz = /bits/ 64 < 5931 >; }; /* 10.DDR:1555 MHz */
 		opp-1804 { opp-hz = /bits/ 64 < 6881 >; }; /* 11.DDR:1804 MHz */
+		opp-2133 { opp-hz = /bits/ 64 < 8136 >; }; /* 12.DDR:2133 MHz */
 	};
 
 	gpubw: qcom,gpubw {
@@ -185,7 +186,7 @@
 
 				qcom,speed-bin = <0>;
 
-				qcom,initial-pwrlevel = <7>;
+				qcom,initial-pwrlevel = <6>;
 				qcom,ca-target-pwrlevel = <5>;
 
 				qcom,gpu-pwrlevel@0 {
@@ -275,7 +276,7 @@
 
 				qcom,speed-bin = <172>;
 
-				qcom,initial-pwrlevel = <7>;
+				qcom,initial-pwrlevel = <6>;
 				qcom,ca-target-pwrlevel = <5>;
 
 				qcom,gpu-pwrlevel@0 {
@@ -519,7 +520,7 @@
 
 				qcom,speed-bin = <167>;
 
-				qcom,initial-pwrlevel = <6>;
+				qcom,initial-pwrlevel = <5>;
 				qcom,ca-target-pwrlevel = <4>;
 
 				/* TURBO */

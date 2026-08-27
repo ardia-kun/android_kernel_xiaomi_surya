@@ -195,9 +195,9 @@ config Z3FOLD
 	depends on Z3FOLD_DEPRECATED
 
 config ZSMALLOC
-	tristate
-	prompt "N:1 compression allocator (zsmalloc)" if ZSWAP
+	tristate "N:1 compression allocator (zsmalloc)"
 	depends on MMU
+	default n
 	help
 	  zsmalloc is a slab-based memory allocator designed to store
 	  pages of various compression levels efficiently. It achieves

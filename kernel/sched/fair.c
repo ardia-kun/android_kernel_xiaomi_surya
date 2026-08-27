@@ -4415,7 +4415,7 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 			load += scale_load_down(curr->load.weight);
 
 		lag *= load + scale_load_down(se->load.weight);
-		if (WARN_ON_ONCE(!load))
+		if (unlikely(!load))
 			load = 1;
 		lag = div_s64(lag, load);
 	}

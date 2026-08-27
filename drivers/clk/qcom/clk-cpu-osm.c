@@ -1195,21 +1195,20 @@ static void clk_cpu_osm_driver_sdmshrike_fixup(void)
 	static void tea_kernel_cooling_work_fn(struct work_struct *work)
 	{
 		int cpu;
-		msleep(10000); 
-		
-		pr_info("Tea Kernel: Register custom thermal is postponed...\n");
 		for_each_present_cpu(cpu) {
 			struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
 			if (policy) {
-				struct device_node *np = of_cpu_device_node_get(cpu);
-				if (np) {
-					of_cpufreq_cooling_register(np, policy);
-					of_node_put(np);
+				if (policy->cpu == cpu) {
+					struct device_node *np = of_cpu_device_node_get(cpu);
+					if (np) {
+						of_cpufreq_cooling_register(np, policy);
+						of_node_put(np);
+					}
 				}
 				cpufreq_cpu_put(policy);
 			}
 		}
-		pr_info("Tea Kernel: Custom thermal policy is activate!\n");
+		pr_info("Tea Kernel: Custom thermal policy activated\n");
 	}
 	static DECLARE_DELAYED_WORK(tea_cooling_work, tea_kernel_cooling_work_fn);
 #endif
@@ -1364,7 +1363,7 @@ static int clk_cpu_osm_driver_probe(struct platform_device *pdev)
 
 	pr_info("OSM CPUFreq driver inited\n");
 #ifdef CONFIG_CPU_THERMAL
-	schedule_delayed_work(&tea_cooling_work, msecs_to_jiffies(15000));
+	schedule_delayed_work(&tea_cooling_work, msecs_to_jiffies(1000));
 #endif
 	return 0;
 

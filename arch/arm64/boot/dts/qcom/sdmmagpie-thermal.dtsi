@@ -118,121 +118,235 @@
 	};
 
 	cpu-0-0-usr {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "user_space";
+		polling-delay-passive = <600>;
+		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 1>;
+		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
-			active-config0 {
-				temperature = <125000>;
-				hysteresis = <1000>;
+			cpu_00_soft: soft-limit {
+				temperature = <73000>;
+				hysteresis = <3000>;
 				type = "passive";
 			};
-			reset-mon-cfg {
-				temperature = <115000>;
+			cpu_00_warm: warm-limit {
+				temperature = <82000>;
 				hysteresis = <5000>;
 				type = "passive";
+			};
+			cpu_00_hot: hot-limit {
+				temperature = <89000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&cpu_00_soft>;
+				cooling-device = <&CPU0 1 1>;
+			};
+			map1 {
+				trip = <&cpu_00_warm>;
+				cooling-device = <&CPU0 3 3>;
+			};
+			map2 {
+				trip = <&cpu_00_hot>;
+				cooling-device = <&CPU0 5 5>;
 			};
 		};
 	};
 
 	cpu-0-1-usr {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "user_space";
+		polling-delay-passive = <600>;
+		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 2>;
+		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
-			active-config0 {
-				temperature = <125000>;
-				hysteresis = <1000>;
+			cpu_01_soft: soft-limit {
+				temperature = <73000>;
+				hysteresis = <3000>;
 				type = "passive";
 			};
-			reset-mon-cfg {
-				temperature = <115000>;
+			cpu_01_warm: warm-limit {
+				temperature = <82000>;
 				hysteresis = <5000>;
 				type = "passive";
+			};
+			cpu_01_hot: hot-limit {
+				temperature = <89000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&cpu_01_soft>;
+				cooling-device = <&CPU1 1 1>;
+			};
+			map1 {
+				trip = <&cpu_01_warm>;
+				cooling-device = <&CPU1 3 3>;
+			};
+			map2 {
+				trip = <&cpu_01_hot>;
+				cooling-device = <&CPU1 5 5>;
 			};
 		};
 	};
 
 	cpu-0-2-usr {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "user_space";
+		polling-delay-passive = <600>;
+		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 3>;
+		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
-			active-config0 {
-				temperature = <125000>;
-				hysteresis = <1000>;
+			cpu_02_soft: soft-limit {
+				temperature = <73000>;
+				hysteresis = <3000>;
 				type = "passive";
 			};
-			reset-mon-cfg {
-				temperature = <115000>;
+			cpu_02_warm: warm-limit {
+				temperature = <82000>;
 				hysteresis = <5000>;
 				type = "passive";
+			};
+			cpu_02_hot: hot-limit {
+				temperature = <89000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&cpu_02_soft>;
+				cooling-device = <&CPU2 1 1>;
+			};
+			map1 {
+				trip = <&cpu_02_warm>;
+				cooling-device = <&CPU2 3 3>;
+			};
+			map2 {
+				trip = <&cpu_02_hot>;
+				cooling-device = <&CPU2 5 5>;
 			};
 		};
 	};
 
 	cpu-0-3-usr {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
+		polling-delay-passive = <600>;
+		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 4>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
-			active-config0 {
-				temperature = <125000>;
-				hysteresis = <1000>;
+			cpu_03_soft: soft-limit {
+				temperature = <73000>;
+				hysteresis = <3000>;
 				type = "passive";
 			};
-			reset-mon-cfg {
-				temperature = <115000>;
+			cpu_03_warm: warm-limit {
+				temperature = <82000>;
 				hysteresis = <5000>;
 				type = "passive";
+			};
+			cpu_03_hot: hot-limit {
+				temperature = <89000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&cpu_03_soft>;
+				cooling-device = <&CPU3 1 1>;
+			};
+			map1 {
+				trip = <&cpu_03_warm>;
+				cooling-device = <&CPU3 3 3>;
+			};
+			map2 {
+				trip = <&cpu_03_hot>;
+				cooling-device = <&CPU3 5 5>;
 			};
 		};
 	};
 
 	cpu-0-4-usr {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
+		polling-delay-passive = <600>;
+		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 5>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
-			active-config0 {
-				temperature = <125000>;
-				hysteresis = <1000>;
+			cpu_04_soft: soft-limit {
+				temperature = <73000>;
+				hysteresis = <3000>;
 				type = "passive";
 			};
-			reset-mon-cfg {
-				temperature = <115000>;
+			cpu_04_warm: warm-limit {
+				temperature = <82000>;
 				hysteresis = <5000>;
 				type = "passive";
+			};
+			cpu_04_hot: hot-limit {
+				temperature = <89000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&cpu_04_soft>;
+				cooling-device = <&CPU4 1 1>;
+			};
+			map1 {
+				trip = <&cpu_04_warm>;
+				cooling-device = <&CPU4 3 3>;
+			};
+			map2 {
+				trip = <&cpu_04_hot>;
+				cooling-device = <&CPU4 5 5>;
 			};
 		};
 	};
 
 	cpu-0-5-usr {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
+		polling-delay-passive = <600>;
+		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 6>;
-		thermal-governor = "user_space";
+		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
-			active-config0 {
-				temperature = <125000>;
-				hysteresis = <1000>;
+			cpu_05_soft: soft-limit {
+				temperature = <73000>;
+				hysteresis = <3000>;
 				type = "passive";
 			};
-			reset-mon-cfg {
-				temperature = <115000>;
+			cpu_05_warm: warm-limit {
+				temperature = <82000>;
 				hysteresis = <5000>;
 				type = "passive";
+			};
+			cpu_05_hot: hot-limit {
+				temperature = <89000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+		cooling-maps {
+			map0 {
+				trip = <&cpu_05_soft>;
+				cooling-device = <&CPU5 1 1>;
+			};
+			map1 {
+				trip = <&cpu_05_warm>;
+				cooling-device = <&CPU5 3 3>;
+			};
+			map2 {
+				trip = <&cpu_05_hot>;
+				cooling-device = <&CPU5 5 5>;
 			};
 		};
 	};

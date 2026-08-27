@@ -7096,16 +7096,6 @@ int sched_isolate_count(const cpumask_t *mask, bool include_offline)
  */
 int sched_isolate_cpu(int cpu)
 {
-	unsigned long loads[3];
-    unsigned long current_load;
-
-    get_avenrun(loads, 0, 0);
-    current_load = loads[0] >> FSHIFT;
-
-    if (current_load >= 3 && cpu > 0) {
-        return -EBUSY; 
-    }
-
 	struct rq *rq = cpu_rq(cpu);
 	cpumask_t avail_cpus;
 	int ret_code = 0;

@@ -2216,6 +2216,7 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 								false, 0);
 			}
 		}
+		rc = smblib_set_prop_battery_charging_enabled(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		rc = smblib_set_prop_battery_charging_enabled(chg, val);

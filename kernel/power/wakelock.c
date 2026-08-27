@@ -164,6 +164,7 @@ static void governor_work_fn(struct work_struct *work)
 	unsigned long flags;
 	struct wakelock *wl;
 	bool need_reschedule = false;
+	LIST_HEAD(expired_list);
 
 	spin_lock_irqsave(&governor_lock, flags);
 
@@ -171,7 +172,19 @@ static void governor_work_fn(struct work_struct *work)
 		u64 elapsed_ms = ktime_to_ms(ktime_sub(now, entry->start_time));
 
 		if (elapsed_ms > governor_max_time_ms) {
-			mutex_lock(&wakelocks_lock);
+			list_move_tail(&entry->list, &expired_list);
+		} else {
+			need_reschedule = true;
+		}
+	}
+
+	spin_unlock_irqrestore(&governor_lock, flags);
+
+	if (!list_empty(&expired_list)) {
+		mutex_lock(&wakelocks_lock);
+		list_for_each_entry_safe(entry, tmp, &expired_list, list) {
+			u64 elapsed_ms = ktime_to_ms(ktime_sub(now, entry->start_time));
+
 			wl = wakelock_lookup_add(entry->name, strlen(entry->name), false);
 			if (!IS_ERR(wl)) {
 				__pm_relax(wl->ws);
@@ -182,17 +195,13 @@ static void governor_work_fn(struct work_struct *work)
 					       entry->name, elapsed_ms);
 				}
 			}
-			mutex_unlock(&wakelocks_lock);
 
 			list_del(&entry->list);
 			kfree(entry->name);
 			kfree(entry);
-		} else {
-			need_reschedule = true;
 		}
+		mutex_unlock(&wakelocks_lock);
 	}
-
-	spin_unlock_irqrestore(&governor_lock, flags);
 
 	if (need_reschedule && governor_enabled) {
 		schedule_delayed_work(&governor_work, msecs_to_jiffies(1000));
