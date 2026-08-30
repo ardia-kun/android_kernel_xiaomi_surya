@@ -94,7 +94,7 @@ static u8 qpnp_read_byte(struct regmap *regmap, u16 addr)
 
 	rc = regmap_read(regmap, addr, &val);
 	if (rc) {
-		pr_err("read failed rc=%d\n", rc);
+		pr_debug("read failed rc=%d\n", rc);
 		return 0;
 	}
 	return (u8)val;
@@ -191,8 +191,8 @@ static int qpnp_revid_probe(struct platform_device *pdev)
 	}
 	pmic_type = qpnp_read_byte(regmap, base + REVID_TYPE);
 	if (pmic_type != PMIC_PERIPHERAL_TYPE) {
-		pr_err("Invalid REVID peripheral type: %02X\n", pmic_type);
-		return -EINVAL;
+		pr_debug("Invalid REVID peripheral type: %02X\n", pmic_type);
+		return -ENODEV;
 	}
 
 	rev1 = qpnp_read_byte(regmap, base + REVID_REVISION1);

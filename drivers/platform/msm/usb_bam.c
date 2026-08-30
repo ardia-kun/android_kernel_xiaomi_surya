@@ -1868,12 +1868,12 @@ static void usb_bam_ipa_delete_resources(enum usb_ctrl cur_bam)
 
 	ret = ipa_rm_delete_resource(ipa_rm_resource_prod[cur_bam]);
 	if (ret)
-		log_event_err("%s: Failed to delete USB_PROD resource\n",
+		log_event_dbg("%s: Failed to delete USB_PROD resource\n",
 						       __func__);
 
 	ret = ipa_rm_delete_resource(ipa_rm_resource_cons[cur_bam]);
 	if (ret)
-		log_event_err("%s: Failed to delete USB_CONS resource\n",
+		log_event_dbg("%s: Failed to delete USB_CONS resource\n",
 						       __func__);
 
 }

@@ -496,10 +496,10 @@ static int cam_cci_assign_fops(void)
 		if (!sd)
 			return 0;
 		if (!(sd->devnode)) {
-			CAM_ERR(CAM_CCI,
-			"Invalid dev node:%pK offset: %d",
+			CAM_DBG(CAM_CCI,
+			"Dev node not ready:%pK offset: %d",
 			sd->devnode, i);
-			return -EINVAL;
+			return 0;
 		}
 		sd->devnode->fops = &cci_v4l2_subdev_fops;
 	}

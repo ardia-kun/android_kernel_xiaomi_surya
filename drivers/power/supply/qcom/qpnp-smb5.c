@@ -604,7 +604,7 @@ static int smb5_parse_dt(struct smb5 *chip)
 #ifdef CONFIG_REVERSE_CHARGE
 	chg->switch_sel_gpio = of_get_named_gpio(node, "mi,swithc-sel-gpio", 0);
 	if (!gpio_is_valid(chg->switch_sel_gpio)) {
-		pr_err("switch sel gpio error getting from OF node\n");
+		pr_debug("switch sel gpio error getting from OF node\n");
 		chg->switch_sel_gpio = -EINVAL;
 	}
 #endif

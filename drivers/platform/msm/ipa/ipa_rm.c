@@ -143,7 +143,7 @@ int ipa_rm_delete_resource(enum ipa_rm_resource_name resource_name)
 	int result;
 
 	if (unlikely(!ipa_rm_ctx)) {
-		IPA_RM_ERR("IPA RM was not initialized\n");
+		IPA_RM_DBG("IPA RM was not initialized\n");
 		return -EINVAL;
 	}
 

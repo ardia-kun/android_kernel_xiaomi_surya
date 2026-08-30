@@ -550,6 +550,8 @@
 
 	dai_sen_auxpcm: qcom,msm-sen-auxpcm {
 		compatible = "qcom,msm-auxpcm-dev";
+		/* Surya/sdmmagpie does not have senary audio path */
+		status = "disabled";
 		qcom,msm-cpudai-auxpcm-mode = <0>, <0>;
 		qcom,msm-cpudai-auxpcm-sync = <1>, <1>;
 		qcom,msm-cpudai-auxpcm-frame = <5>, <4>;
@@ -765,6 +767,8 @@
 
 	tdm_sen_rx: qcom,msm-dai-tdm-sen-rx {
 		compatible = "qcom,msm-dai-tdm";
+		/* Surya/sdmmagpie: senary TDM group ID 0x9150 not supported */
+		status = "disabled";
 		qcom,msm-cpudai-tdm-group-id = <37200>;
 		qcom,msm-cpudai-tdm-group-num-ports = <1>;
 		qcom,msm-cpudai-tdm-group-port-id = <36944>;
@@ -784,6 +788,8 @@
 
 	tdm_sen_tx: qcom,msm-dai-tdm-sen-tx {
 		compatible = "qcom,msm-dai-tdm";
+		/* Surya/sdmmagpie: senary TDM group ID 0x9151 not supported */
+		status = "disabled";
 		qcom,msm-cpudai-tdm-group-id = <37201>;
 		qcom,msm-cpudai-tdm-group-num-ports = <1>;
 		qcom,msm-cpudai-tdm-group-port-id = <36945>;

@@ -1015,7 +1015,7 @@ int cam_vfe_top_ver2_init(
 				&top_priv->mux_rsrc[i]);
 			if (rc)
 				goto deinit_resources;
-		} else {
+		} else if (ver2_hw_info->mux_type[i]) {
 			CAM_WARN(CAM_ISP, "Invalid mux type: %u",
 				ver2_hw_info->mux_type[i]);
 		}

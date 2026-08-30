@@ -66,7 +66,7 @@ static struct msm_bus_scale_pdata *get_pdata(struct device *dev,
 	ret = of_property_read_string(of_node, "qcom,msm-bus,name",
 		&pdata->name);
 	if (ret) {
-		pr_err("Error: Client name not found\n");
+		pr_debug("AXI: get_pdata(): Client name not found\n");
 		goto err;
 	}
 
@@ -208,7 +208,7 @@ struct msm_bus_scale_pdata *msm_bus_cl_get_pdata(struct platform_device *pdev)
 	of_node = pdev->dev.of_node;
 	pdata = get_pdata(&pdev->dev, of_node);
 	if (!pdata) {
-		pr_err("client has to provide missing entry for successful registration\n");
+		pr_debug("AXI: msm_bus_cl_get_pdata(): client has to provide missing entry for successful registration\n");
 		return NULL;
 	}
 

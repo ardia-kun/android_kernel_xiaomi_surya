@@ -568,7 +568,7 @@ static int msm_dai_q6_hdmi_dev_probe(struct platform_device *pdev)
 			ARRAY_SIZE(msm_dai_q6_display_port_rx_dai));
 		break;
 	default:
-		dev_err(&pdev->dev, "invalid device ID %d\n", pdev->id);
+		dev_dbg(&pdev->dev, "invalid device ID %d\n", pdev->id);
 		rc = -ENODEV;
 		break;
 	}

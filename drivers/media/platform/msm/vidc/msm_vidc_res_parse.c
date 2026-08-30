@@ -743,9 +743,9 @@ static int msm_decide_dt_node(
 
 	if (sku_index != res->sku_version) {
 		dprintk(VIDC_DBG,
-			"Failed to parser dt: sku_index %d res->sku_version - %d\n",
+			"Failed to parse dt: sku_index %d res->sku_version - %d\n",
 			sku_index, res->sku_version);
-		return -EINVAL;
+		return -ENODEV;
 	}
 
 	return 0;

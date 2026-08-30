@@ -4226,7 +4226,7 @@ static int msm_auxpcm_dev_probe(struct platform_device *pdev)
 		pdev->id = MSM_DAI_QUIN_AUXPCM_DT_DEV_ID;
 		i = 4;
 	} else {
-		dev_err(&pdev->dev, "%s: invalid DT intf name %s\n",
+		dev_dbg(&pdev->dev, "%s: invalid DT intf name %s\n",
 			__func__, intf_name);
 		goto fail_invalid_intf;
 	}

@@ -611,9 +611,9 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto exit;
 	}
 
-	if(fpsensor != 1){
-		pr_err("Macle fpc1020_probeing failed as fpsensor=%d(1=fp)\n", fpsensor);
-		return -ENOMEM;
+	if (fpsensor != 1) {
+		pr_debug("fpc1020 skipped as fpsensor=%d(1=fp)\n", fpsensor);
+		return -ENODEV;
 	}
 
 

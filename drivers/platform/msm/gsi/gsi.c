@@ -4577,7 +4577,8 @@ static int msm_gsi_probe(struct platform_device *pdev)
 	gsi_ctx->ipc_logbuf = ipc_log_context_create(GSI_IPC_LOG_PAGES,
 		"gsi", 0);
 	if (gsi_ctx->ipc_logbuf == NULL)
-		GSIERR("failed to create IPC log, continue...\n");
+		dev_dbg(gsi_ctx->dev, "%s:%d failed to create IPC log, continue...\n",
+			__func__, __LINE__);
 
 	gsi_ctx->dev = dev;
 	init_completion(&gsi_ctx->gen_ee_cmd_compl);

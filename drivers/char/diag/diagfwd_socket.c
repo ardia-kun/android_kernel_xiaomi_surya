@@ -452,7 +452,7 @@ static void socket_open_client(struct diag_socket_info *info)
 
 	ret = sock_create(AF_QIPCRTR, SOCK_DGRAM, PF_QIPCRTR, &info->hdl);
 	if (ret < 0 || !info->hdl) {
-		pr_err("diag: In %s, socket not initialized for %s\n", __func__,
+		pr_debug("diag: In %s, socket not initialized for %s\n", __func__,
 		       info->name);
 		return;
 	}
@@ -485,7 +485,7 @@ static void socket_open_server(struct diag_socket_info *info)
 
 	ret = sock_create(AF_QIPCRTR, SOCK_DGRAM, PF_QIPCRTR, &info->hdl);
 	if (ret < 0 || !info->hdl) {
-		pr_err("diag: In %s, socket not initialized for %s\n", __func__,
+		pr_debug("diag: In %s, socket not initialized for %s\n", __func__,
 		       info->name);
 		return;
 	}

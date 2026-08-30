@@ -166,7 +166,7 @@ int diag_mux_register(int proc, int ctx, struct diag_mux_ops *ops)
 		return 0;
 	err = diag_pcie_register_ops(proc, ctx, ops);
 	if (err) {
-		pr_err("diag: MUX: unable to register PCIe operations, continuing with USB registrations for proc: %d, err: %d\n",
+		pr_debug("diag: MUX: unable to register PCIe operations, continuing with USB registrations for proc: %d, err: %d\n",
 		proc, err);
 	}
 	err = diag_usb_register_ops(proc, ctx, ops);

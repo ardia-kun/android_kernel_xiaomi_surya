@@ -233,7 +233,7 @@ static int pmic_gpio_read(struct pmic_gpio_state *state,
 
 	ret = regmap_read(state->map, pad->base + addr, &val);
 	if (ret < 0)
-		dev_err(state->dev, "read 0x%x failed\n", addr);
+		dev_dbg(state->dev, "read 0x%x failed\n", addr);
 	else
 		ret = val;
 
@@ -1165,7 +1165,7 @@ static int pmic_gpio_probe(struct platform_device *pdev)
 
 		ret = pmic_gpio_populate(state, pad);
 		if (ret < 0) {
-			dev_err(state->dev,
+			dev_dbg(state->dev,
 				"failed to populate gpio %d, ret=%d\n",
 							i, ret);
 			goto err_free;

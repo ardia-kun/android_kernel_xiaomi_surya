@@ -640,7 +640,7 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 			 slave_info);
 		return -EINVAL;
 	}
-	CAM_ERR(CAM_SENSOR, "slaveaddr: 0x%x, sensor_id_reg_addr =0x%x",
+	CAM_DBG(CAM_SENSOR, "slaveaddr: 0x%x, sensor_id_reg_addr =0x%x",
 		slave_info->sensor_slave_addr,slave_info->sensor_id_reg_addr);
 	if (0xe1 == slave_info->sensor_id) {//hi259
 		rc = camera_io_dev_read(
@@ -668,7 +668,7 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 				&versionid, CAMERA_SENSOR_I2C_TYPE_WORD,
 				CAMERA_SENSOR_I2C_TYPE_BYTE);
 
-			CAM_ERR(CAM_SENSOR, "version id 0x%x",
+			CAM_DBG(CAM_SENSOR, "version id 0x%x",
 						versionid);
 			if ((cam_sensor_id_by_mask(s_ctrl, versionid) == 0x02) ||
 				(cam_sensor_id_by_mask(s_ctrl, versionid) == 0x01)) {

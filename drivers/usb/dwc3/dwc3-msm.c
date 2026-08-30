@@ -4183,14 +4183,16 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->hs_phy = devm_usb_get_phy_by_phandle(&mdwc->dwc3->dev,
 							"usb-phy", 0);
 	if (IS_ERR(mdwc->hs_phy)) {
-		dev_err(&pdev->dev, "unable to get hsphy device\n");
+		if (PTR_ERR(mdwc->hs_phy) != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "unable to get hsphy device\n");
 		ret = PTR_ERR(mdwc->hs_phy);
 		goto put_dwc3;
 	}
 	mdwc->ss_phy = devm_usb_get_phy_by_phandle(&mdwc->dwc3->dev,
 							"usb-phy", 1);
 	if (IS_ERR(mdwc->ss_phy)) {
-		dev_err(&pdev->dev, "unable to get ssphy device\n");
+		if (PTR_ERR(mdwc->ss_phy) != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "unable to get ssphy device\n");
 		ret = PTR_ERR(mdwc->ss_phy);
 		goto put_dwc3;
 	}

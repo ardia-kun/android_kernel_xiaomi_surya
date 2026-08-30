@@ -351,7 +351,8 @@ static int msm_vidc_initialize_core(struct platform_device *pdev,
 		return -EINVAL;
 	rc = read_platform_resources(core, pdev);
 	if (rc) {
-		dprintk(VIDC_ERR, "Failed to get platform resources\n");
+		if (rc != -ENODEV)
+			dprintk(VIDC_ERR, "Failed to get platform resources\n");
 		return rc;
 	}
 
@@ -549,7 +550,8 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, core);
 	rc = msm_vidc_initialize_core(pdev, core);
 	if (rc) {
-		dprintk(VIDC_ERR, "Failed to init core\n");
+		if (rc != -ENODEV)
+			dprintk(VIDC_ERR, "Failed to init core\n");
 		goto err_core_init;
 	}
 	rc = sysfs_create_group(&pdev->dev.kobj, &msm_vidc_core_attr_group);
