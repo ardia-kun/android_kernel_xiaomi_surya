@@ -392,8 +392,12 @@ static int do_get_app_profile(void __user *arg)
     } else {
         if (copy_to_user((char __user *)arg + offsetof(struct ksu_get_app_profile_cmd, profile), profile,
                          sizeof(struct app_profile))) {
-            pr_err("get_app_profile: copy_to_user failed\n");
-            ret = -EFAULT;
+            static const size_t kAppProfileSizePreV4 = 776;
+            if (copy_to_user((char __user *)arg + offsetof(struct ksu_get_app_profile_cmd, profile), profile,
+                             kAppProfileSizePreV4)) {
+                pr_err("get_app_profile: copy_to_user failed\n");
+                ret = -EFAULT;
+            }
         }
         ksu_put_app_profile(profile);
     }
@@ -409,9 +413,13 @@ static int do_set_app_profile(void __user *arg)
     struct ksu_set_app_profile_cmd cmd;
     int ret;
 
+    memset(&cmd, 0, sizeof(cmd));
     if (copy_from_user(&cmd, arg, sizeof(cmd))) {
-        pr_err("set_app_profile: copy_from_user failed\n");
-        return -EFAULT;
+        static const size_t kAppProfileSizePreV4 = 776;
+        if (copy_from_user(&cmd, arg, kAppProfileSizePreV4)) {
+            pr_err("set_app_profile: copy_from_user failed\n");
+            return -EFAULT;
+        }
     }
 
     ret = ksu_set_app_profile(&cmd.profile);

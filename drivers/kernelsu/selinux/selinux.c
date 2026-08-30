@@ -153,7 +153,7 @@ void cache_sid(void)
 #ifdef CONFIG_KSU_SUSFS
     err = security_secctx_to_secid(ZYGOTE_NEXT_DOMAIN, strlen(ZYGOTE_NEXT_DOMAIN), &cached_zygote_next_sid);
     if (err) {
-        pr_warn("Failed to cache zygote next SID: %d, Safe ignore that when you are Android 17-\n", err);
+        pr_debug("Failed to cache zygote next SID: %d (normal for Android < 17)\n", err);
         cached_zygote_next_sid = 0;
     } else {
         pr_info("Cached zygote next SID: %u\n", cached_zygote_next_sid);

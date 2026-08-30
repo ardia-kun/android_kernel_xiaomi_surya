@@ -23,6 +23,7 @@
 		qcom,revid@100 {
 			compatible = "qcom,qpnp-revid";
 			reg = <0x100 0x100>;
+			status = "disabled";
 		};
 
 		pm8009_gpios: pinctrl@c000 {
@@ -36,6 +37,7 @@
 			gpio-controller;
 			#gpio-cells = <2>;
 			qcom,gpios-disallowed = <3>;
+			status = "disabled";
 		};
 	};
 
