@@ -227,6 +227,7 @@ struct bq2597x {
 
 	bool irq_waiting;
 	bool irq_disabled;
+	bool irq_wake_enabled;
 	bool resume_completed;
 
 	bool batt_present;
@@ -1800,6 +1801,7 @@ static enum power_supply_property bq2597x_charger_props[] = {
 	POWER_SUPPLY_PROP_TI_BUS_CURRENT,
 	POWER_SUPPLY_PROP_TI_BUS_TEMPERATURE,
 	POWER_SUPPLY_PROP_TI_DIE_TEMPERATURE,
+	POWER_SUPPLY_PROP_CP_DIE_TEMP,
 	POWER_SUPPLY_PROP_TI_ALARM_STATUS,
 	POWER_SUPPLY_PROP_TI_FAULT_STATUS,
 	POWER_SUPPLY_PROP_TI_REG_STATUS,
@@ -1884,6 +1886,7 @@ static int bq2597x_charger_get_property(struct power_supply *psy,
 
 		val->intval = bq->bus_temp;
 		break;
+	case POWER_SUPPLY_PROP_CP_DIE_TEMP:
 	case POWER_SUPPLY_PROP_TI_DIE_TEMPERATURE:
 		ret = bq2597x_get_adc_data(bq, ADC_TDIE, &result);
 		if (!ret)
@@ -2281,29 +2284,7 @@ static int bq_charger_int(struct bq2597x *chip)
 }
 
 
-static int get_charge_awake_state(struct bq2597x *bq)
-{
-	int ret;
-	union power_supply_propval val = {0,};
 
-	if (!bq->batt_psy)
-		bq->batt_psy = power_supply_get_by_name("battery");
-
-	if(bq->batt_psy){
-
-		ret = power_supply_get_property(bq->batt_psy,
-				POWER_SUPPLY_PROP_CHARGE_AWAKE_STATE, &val);
-
-		if (ret < 0) {
-			pr_info("Couldn't get awake:%d\n", ret);
-			return 0;
-		}
-
-		return val.intval;
-	}
-
-	return 0;
-}
 
 
 
@@ -2384,7 +2365,6 @@ static int bq2597x_charger_probe(struct i2c_client *client,
 							client->irq, ret);
 			goto err_1;
 		}
-		enable_irq_wake(client->irq);
 	}
 
 	INIT_DELAYED_WORK(&bq->monitor_work, bq2597x_monitor_work);
@@ -2422,23 +2402,27 @@ static int bq2597x_suspend(struct device *dev)
 
 	mutex_lock(&bq->irq_complete);
 	bq->resume_completed = false;
+	bq->irq_waiting = false;
 	mutex_unlock(&bq->irq_complete);
 	bq2597x_enable_adc(bq, false);
 	cancel_delayed_work_sync(&bq->monitor_work);
+
+	if (client->irq) {
+		if (bq->vbus_present) {
+			if (!bq->irq_wake_enabled) {
+				enable_irq_wake(client->irq);
+				bq->irq_wake_enabled = true;
+			}
+		} else {
+			if (bq->irq_wake_enabled) {
+				disable_irq_wake(client->irq);
+				bq->irq_wake_enabled = false;
+			}
+		}
+	}
+
 	bq_err("Suspend successfully!");
 
-	return 0;
-}
-
-static int bq2597x_suspend_noirq(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct bq2597x *bq = i2c_get_clientdata(client);
-
-	if (bq->irq_waiting) {
-		pr_err_ratelimited("Aborting suspend, an interrupt was detected while suspending\n");
-		return -EBUSY;
-	}
 	return 0;
 }
 
@@ -2457,6 +2441,11 @@ static int bq2597x_resume(struct device *dev)
 		bq2597x_charger_interrupt(client->irq, bq);
 	} else {
 		mutex_unlock(&bq->irq_complete);
+	}
+
+	if (client->irq && bq->irq_wake_enabled) {
+		disable_irq_wake(client->irq);
+		bq->irq_wake_enabled = false;
 	}
 
 	bq2597x_enable_adc(bq, true);
@@ -2495,7 +2484,6 @@ static void bq2597x_charger_shutdown(struct i2c_client *client)
 
 static const struct dev_pm_ops bq2597x_pm_ops = {
 	.resume		= bq2597x_resume,
-	.suspend_noirq = bq2597x_suspend_noirq,
 	.suspend	= bq2597x_suspend,
 };
 

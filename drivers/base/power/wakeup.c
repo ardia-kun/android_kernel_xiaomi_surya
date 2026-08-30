@@ -656,9 +656,10 @@ static bool check_for_block(struct wakeup_source *ws)
 static void wakeup_source_report_event(struct wakeup_source *ws, bool hard)
 {
 #ifdef CONFIG_BOEFFLA_WL_BLOCKER
-	if (!check_for_block(ws))
-	{
+	if (check_for_block(ws))
+		return;
 #endif
+
 	ws->event_count++;
 	/* This is racy, but the counter is approximate anyway. */
 	if (events_check_enabled)
@@ -666,10 +667,6 @@ static void wakeup_source_report_event(struct wakeup_source *ws, bool hard)
 
 	if (!ws->active)
 		wakeup_source_activate(ws);
-
-#ifdef CONFIG_BOEFFLA_WL_BLOCKER
-	}
-#endif
 
 	if (hard)
 		pm_system_wakeup();
@@ -687,6 +684,11 @@ void __pm_stay_awake(struct wakeup_source *ws)
 
 	if (!ws)
 		return;
+
+#ifdef CONFIG_BOEFFLA_WL_BLOCKER
+	if (check_for_block(ws))
+		return;
+#endif
 
 	spin_lock_irqsave(&ws->lock, flags);
 
@@ -876,6 +878,11 @@ void pm_wakeup_ws_event(struct wakeup_source *ws, unsigned int msec, bool hard)
 	if (!ws)
 		return;
 
+#ifdef CONFIG_BOEFFLA_WL_BLOCKER
+	if (check_for_block(ws))
+		return;
+#endif
+
 	spin_lock_irqsave(&ws->lock, flags);
 
 	wakeup_source_report_event(ws, hard);
@@ -961,7 +968,7 @@ void pm_print_active_wakeup_sources(void)
 	srcuidx = srcu_read_lock(&wakeup_srcu);
 	list_for_each_entry_rcu(ws, &wakeup_sources, entry) {
 		if (ws->active) {
-			pr_debug("active wakeup source: %s\n", ws->name);
+			pr_info("active wakeup source: %s\n", ws->name);
 #ifdef CONFIG_BOEFFLA_WL_BLOCKER
 			if (!check_for_block(ws))
 #endif
@@ -975,7 +982,7 @@ void pm_print_active_wakeup_sources(void)
 	}
 
 	if (!active && last_activity_ws)
-		pr_debug("last active wakeup source: %s\n",
+		pr_info("last active wakeup source: %s\n",
 			last_activity_ws->name);
 	srcu_read_unlock(&wakeup_srcu, srcuidx);
 }

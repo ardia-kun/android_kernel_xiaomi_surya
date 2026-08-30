@@ -79,20 +79,23 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 
 			if (channel_count == 1) {
 				if (sscanf(calib_data, "%d;%d;", s_rdc_fix, &s_tv_fix) != 2) {
-					pr_err("TI-SmartPA: %s: file %s read error\n", __func__, filepath);
+					pr_debug("TI-SmartPA: %s: file %s read error\n", __func__, filepath);
 					ret = -EIO;
 				}
 			} else if (channel_count == 2) {
 				if (sscanf(calib_data, "%d;%d;%d;", &s_rdc_fix[0], &s_rdc_fix[1], &s_tv_fix) != 3) {
-					pr_err("TI-SmartPA: %s: file %s read error\n", __func__, filepath);
+					pr_debug("TI-SmartPA: %s: file %s read error\n", __func__, filepath);
 					ret = -EIO;
 				}
 			}
 			filp_close(file, NULL);
 
 		} else {
-			pr_err("TI-SmartPA: %s: file %s open failed %p \n ",
+			pr_debug("TI-SmartPA: %s: file %s open failed %p\n",
 				__func__, filepath, file);
+			s_rdc_fix[0] = 0;
+			s_rdc_fix[1] = 0;
+			s_tv_fix = 0;
 			ret = -EIO;
 		}
 #else
@@ -108,7 +111,7 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 			if (channel_count == 1) {
 				if (sscanf(calib_data, "%d;%d;",
 					&rdc_fix[0], tv_fix) != 2) {
-					pr_err("TI-SmartPA: %s: file %s read error\n",
+					pr_debug("TI-SmartPA: %s: file %s read error\n",
 						__func__, filepath);
 					ret = -EIO;
 				}
@@ -116,14 +119,17 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 				if (sscanf(calib_data, "%d;%d;%d;",
 					&rdc_fix[0], &rdc_fix[1],
 					tv_fix) != 3) {
-					pr_err("TI-SmartPA: %s: file %s read error\n",
+					pr_debug("TI-SmartPA: %s: file %s read error\n",
 						__func__, filepath);
 					ret = -EIO;
 				}
 			}
 		} else {
-			pr_err("TI-SmartPA: %s: file %s open failed %p \n ",
+			pr_debug("TI-SmartPA: %s: file %s open failed %p\n",
 				__func__, filepath, file);
+			s_rdc_fix[0] = 0;
+			s_rdc_fix[1] = 0;
+			s_tv_fix = 0;
 			ret = -EIO;
 		}
 #endif

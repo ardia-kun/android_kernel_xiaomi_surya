@@ -1,30 +1,31 @@
 #ifndef __KSU_H_KSU
 #define __KSU_H_KSU
 
+#include <linux/types.h>
+#include <linux/cred.h>
+#include <linux/workqueue.h>
+
 #define KERNEL_SU_VERSION KSU_VERSION
+#define KERNEL_SU_OPTION 0xDEADBEEF
 
-struct cred* ksu_cred;
+extern struct cred *ksu_cred;
+extern bool ksu_late_loaded;
+extern bool allow_shell;
+extern bool ksu_no_custom_rc;
 
-#if defined(CONFIG_KSU_DEBUG) || defined(CONFIG_KSU_SHELL_HAS_SU_ALWAYS)
-static bool allow_shell = true;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) || defined(KSU_COMPAT_HAS_SELINUX_POLICY_STRUCT)
+extern struct selinux_policy *backup_sepolicy;
 #else
-static bool allow_shell = false;
+extern struct policydb *backup_policydb;
+extern struct sidtab *backup_sidtab;
 #endif
 
-static inline int startswith(char *s, char *prefix)
-{
-	return strncmp(s, prefix, strlen(prefix));
-}
+// kernel su version full strings
+#ifndef KSU_VERSION_FULL
+#define KSU_VERSION_FULL "v3.x-00000000@unknown"
+#endif
+#define KSU_FULL_VERSION_STRING 255
 
-static inline int endswith(const char *s, const char *t)
-{
-	size_t slen = strlen(s);
-	size_t tlen = strlen(t);
-	if (tlen > slen)
-		return 1;
-	return strcmp(s + slen - tlen, t);
-}
-
-extern struct cred* ksu_cred;
+void setup_ksu_cred(void);
 
 #endif

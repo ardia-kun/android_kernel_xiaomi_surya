@@ -4801,8 +4801,12 @@ int smblib_get_prop_smb_health(struct smb_charger *chg)
 
 	rc = power_supply_get_property(chg->cp_psy,
 				POWER_SUPPLY_PROP_CP_DIE_TEMP, &prop);
-	if (rc < 0)
-		return rc;
+	if (rc < 0) {
+		rc = power_supply_get_property(chg->cp_psy,
+					POWER_SUPPLY_PROP_TI_DIE_TEMPERATURE, &prop);
+		if (rc < 0)
+			return POWER_SUPPLY_HEALTH_UNKNOWN;
+	}
 
 	if (prop.intval > SMB_TEMP_RST_THRESH)
 		return POWER_SUPPLY_HEALTH_OVERHEAT;

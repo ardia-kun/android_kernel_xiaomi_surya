@@ -132,7 +132,7 @@
 		/* Enable context aware freq. scaling */
 		qcom,enable-ca-jump;
 		/* Context aware jump busy penalty in us */
-		qcom,ca-busy-penalty = <12000>;
+		qcom,ca-busy-penalty = <30000>;
 
 		qcom,gpu-speed-bin = <0x41a0 0x1fe00000 21>;
 
@@ -158,7 +158,7 @@
 			qcom,gpu-mempool@2 {
 				reg = <2>;
 				qcom,mempool-page-size = <65536>;
-				qcom,mempool-reserved = <256>;
+				qcom,mempool-allocate;
 			};
 			/* 1M Page Pool configuration */
 			qcom,gpu-mempool@3 {
@@ -186,8 +186,8 @@
 
 				qcom,speed-bin = <0>;
 
-				qcom,initial-pwrlevel = <5>;
-				qcom,ca-target-pwrlevel = <4>;
+				qcom,initial-pwrlevel = <6>;
+				qcom,ca-target-pwrlevel = <5>;
 
 				/* TURBO */
 				qcom,gpu-pwrlevel@0 {
@@ -268,8 +268,8 @@
 
 				qcom,speed-bin = <172>;
 
-				qcom,initial-pwrlevel = <5>;
-				qcom,ca-target-pwrlevel = <4>;
+				qcom,initial-pwrlevel = <6>;
+				qcom,ca-target-pwrlevel = <5>;
 
 				/* TURBO */
 				qcom,gpu-pwrlevel@0 {

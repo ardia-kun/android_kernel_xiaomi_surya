@@ -478,6 +478,11 @@ void hdd_enable_ns_offload(struct hdd_adapter *adapter,
 		goto free_req;
 	}
 
+	if (!ns_req->count) {
+		hdd_debug("No IPv6 addresses configured; skip NS offload");
+		goto free_req;
+	}
+
 	/* cache ns request */
 	status = ucfg_pmo_cache_ns_offload_req(ns_req);
 	if (QDF_IS_STATUS_ERROR(status)) {

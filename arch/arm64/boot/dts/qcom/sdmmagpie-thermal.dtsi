@@ -118,24 +118,24 @@
 	};
 
 	cpu-0-0-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 1>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_00_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_00_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_00_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -157,24 +157,24 @@
 	};
 
 	cpu-0-1-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 2>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_01_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_01_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_01_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -196,24 +196,24 @@
 	};
 
 	cpu-0-2-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 3>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_02_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_02_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_02_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -235,24 +235,24 @@
 	};
 
 	cpu-0-3-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 4>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_03_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_03_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_03_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -274,24 +274,24 @@
 	};
 
 	cpu-0-4-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 5>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_04_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_04_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_04_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -313,24 +313,24 @@
 	};
 
 	cpu-0-5-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 6>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_05_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_05_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_05_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -392,24 +392,24 @@
 	};
 
 	cpu-1-0-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 9>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_16_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_16_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_16_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -431,24 +431,24 @@
 	};
 
 	cpu-1-1-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 10>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			cpu_17_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			cpu_17_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			cpu_17_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -510,24 +510,24 @@
 	};
 
 	gpuss-0-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 13>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			gpu_0_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			gpu_0_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			gpu_0_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -549,24 +549,24 @@
 	};
 
 	gpuss-1-usr {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-sensors = <&tsens0 14>;
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
 			gpu_1_soft: soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			gpu_1_warm: warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			gpu_1_hot: hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -893,7 +893,7 @@
 	};
 
 	lmh-dcvs-00 {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-governor = "step_wise";
 		thermal-sensors = <&lmh_dcvs0>;
@@ -901,17 +901,17 @@
 
 		trips {
 			soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};
@@ -919,7 +919,7 @@
 	};
 
 	lmh-dcvs-01 {
-		polling-delay-passive = <600>;
+		polling-delay-passive = <300>;
 		polling-delay = <1000>;
 		thermal-governor = "step_wise";
 		thermal-sensors = <&lmh_dcvs1>;
@@ -927,17 +927,17 @@
 
 		trips {
 			soft-limit {
-				temperature = <73000>;
+				temperature = <80000>;
 				hysteresis = <3000>;
 				type = "passive";
 			};
 			warm-limit {
-				temperature = <82000>;
-				hysteresis = <5000>;
+				temperature = <88000>;
+				hysteresis = <4000>;
 				type = "passive";
 			};
 			hot-limit {
-				temperature = <89000>;
+				temperature = <95000>;
 				hysteresis = <5000>;
 				type = "passive";
 			};

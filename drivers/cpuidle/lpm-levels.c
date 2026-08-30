@@ -137,7 +137,17 @@ static bool print_parsed_dt;
 module_param_named(print_parsed_dt, print_parsed_dt, bool, 0664);
 
 static bool sleep_disabled;
-module_param_named(sleep_disabled, sleep_disabled, bool, 0664);
+static int set_sleep_disabled(const char *buf, const struct kernel_param *kp)
+{
+	pr_info("lpm-levels: bootloader sleep_disabled param ignored, LPM sleep enforced\n");
+	sleep_disabled = false;
+	return 0;
+}
+static const struct kernel_param_ops sleep_disabled_ops = {
+	.set = set_sleep_disabled,
+	.get = param_get_bool,
+};
+module_param_cb(sleep_disabled, &sleep_disabled_ops, &sleep_disabled, 0664);
 
 /**
  * msm_cpuidle_get_deep_idle_latency - Get deep idle latency value

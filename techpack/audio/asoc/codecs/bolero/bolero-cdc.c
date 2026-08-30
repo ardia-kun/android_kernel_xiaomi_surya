@@ -739,10 +739,126 @@ int bolero_register_wake_irq(struct snd_soc_codec *codec, u32 ipc_wakeup)
 }
 EXPORT_SYMBOL(bolero_register_wake_irq);
 
+#ifdef CONFIG_SOUND_CONTROL
+static struct snd_soc_codec *sound_control_codec_ptr;
+
+static ssize_t headphone_gain_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d %d\n",
+		(s8)snd_soc_read(sound_control_codec_ptr,
+				  BOLERO_CDC_RX_RX0_RX_VOL_CTL),
+		(s8)snd_soc_read(sound_control_codec_ptr,
+				  BOLERO_CDC_RX_RX1_RX_VOL_CTL)
+	);
+}
+
+static ssize_t headphone_gain_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input_l, input_r;
+
+	if (sscanf(buf, "%d %d", &input_l, &input_r) != 2)
+		return -EINVAL;
+
+	if (input_l < -40 || input_l > 20)
+		input_l = 0;
+
+	if (input_r < -40 || input_r > 20)
+		input_r = 0;
+
+	snd_soc_write(sound_control_codec_ptr, BOLERO_CDC_RX_RX0_RX_VOL_CTL,
+		      (u8)input_l);
+	snd_soc_write(sound_control_codec_ptr, BOLERO_CDC_RX_RX1_RX_VOL_CTL,
+		      (u8)input_r);
+
+	return count;
+}
+
+static struct kobj_attribute headphone_gain_attribute =
+	__ATTR(headphone_gain, 0664,
+		headphone_gain_show,
+		headphone_gain_store);
+
+static ssize_t mic_gain_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+		(s8)snd_soc_read(sound_control_codec_ptr,
+				  BOLERO_CDC_TX1_TX_VOL_CTL));
+}
+
+static ssize_t mic_gain_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input;
+
+	if (sscanf(buf, "%d", &input) != 1)
+		return -EINVAL;
+
+	if (input < -10 || input > 20)
+		input = 0;
+
+	snd_soc_write(sound_control_codec_ptr, BOLERO_CDC_TX1_TX_VOL_CTL,
+		      (u8)input);
+
+	return count;
+}
+
+static struct kobj_attribute mic_gain_attribute =
+	__ATTR(mic_gain, 0664,
+		mic_gain_show,
+		mic_gain_store);
+
+static struct attribute *sound_control_attrs[] = {
+		&headphone_gain_attribute.attr,
+		&mic_gain_attribute.attr,
+		NULL,
+};
+
+static struct attribute_group sound_control_attr_group = {
+		.attrs = sound_control_attrs,
+};
+
+static struct kobject *sound_control_kobj;
+
+static int bolero_sound_control_init(void)
+{
+	int ret;
+
+	sound_control_kobj = kobject_create_and_add("sound_control", kernel_kobj);
+	if (!sound_control_kobj)
+		return -ENOMEM;
+
+	ret = sysfs_create_group(sound_control_kobj, &sound_control_attr_group);
+	if (ret) {
+		kobject_put(sound_control_kobj);
+		sound_control_kobj = NULL;
+	}
+
+	return ret;
+}
+
+static void bolero_sound_control_exit(void)
+{
+	if (!sound_control_kobj)
+		return;
+
+	sysfs_remove_group(sound_control_kobj, &sound_control_attr_group);
+	kobject_put(sound_control_kobj);
+	sound_control_kobj = NULL;
+	sound_control_codec_ptr = NULL;
+}
+#endif
+
 static int bolero_soc_codec_probe(struct snd_soc_codec *codec)
 {
 	struct bolero_priv *priv = dev_get_drvdata(codec->dev);
 	int macro_idx, ret = 0;
+
+#ifdef CONFIG_SOUND_CONTROL
+	sound_control_codec_ptr = codec;
+#endif
 
 	/* call init for supported macros */
 	for (macro_idx = START_MACRO; macro_idx < MAX_MACRO; macro_idx++) {
@@ -756,6 +872,14 @@ static int bolero_soc_codec_probe(struct snd_soc_codec *codec)
 			}
 		}
 	}
+#ifdef CONFIG_SOUND_CONTROL
+	ret = bolero_sound_control_init();
+	if (ret) {
+		dev_warn(codec->dev, "%s: sound_control init failed: %d\n",
+			 __func__, ret);
+		ret = 0;
+	}
+#endif
 	priv->codec = codec;
 	/*
 	 * In order for the ADIE RTC to differentiate between targets
@@ -778,10 +902,16 @@ static int bolero_soc_codec_probe(struct snd_soc_codec *codec)
 		dev_err(codec->dev,
 			"%s: Registration with SND event FWK failed ret = %d\n",
 			__func__, ret);
-		goto err;
+		goto err_sound_control;
 	}
 
 	dev_dbg(codec->dev, "%s: bolero soc codec probe success\n", __func__);
+	return 0;
+
+err_sound_control:
+#ifdef CONFIG_SOUND_CONTROL
+	bolero_sound_control_exit();
+#endif
 err:
 	return ret;
 }
@@ -791,6 +921,9 @@ static int bolero_soc_codec_remove(struct snd_soc_codec *codec)
 	struct bolero_priv *priv = dev_get_drvdata(codec->dev);
 	int macro_idx;
 
+#ifdef CONFIG_SOUND_CONTROL
+	bolero_sound_control_exit();
+#endif
 	snd_event_client_deregister(priv->dev);
 	/* call exit for supported macros */
 	for (macro_idx = START_MACRO; macro_idx < MAX_MACRO; macro_idx++)

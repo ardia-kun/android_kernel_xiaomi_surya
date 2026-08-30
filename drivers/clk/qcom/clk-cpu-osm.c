@@ -745,9 +745,9 @@ static int osm_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		goto err;
 	}
 
-	policy->min = 300000;
-	policy->cpuinfo.min_freq = 300000;
-	policy->user_policy.min = 300000;
+	policy->min = policy->cpuinfo.min_freq;
+	policy->user_policy.min = policy->cpuinfo.min_freq;
+	pr_info("CPU%d cpufreq initialized: min=%u kHz, max=%u kHz\n", policy->cpu, policy->min, policy->max);
 
 	policy->dvfs_possible_from_any_cpu = true;
 	policy->fast_switch_possible = true;
@@ -1029,13 +1029,14 @@ static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c)
 	if (prop_name[0] != '\0') {
         count = of_property_count_u32_elems(pdev->dev.of_node, prop_name);
         
-        if (count > 0 && count == j) {
+        if (count > 0) {
+            int num_entries = min(count, (int)j);
             volt_table = kmalloc_array(count, sizeof(u32), GFP_KERNEL);
             
             if (volt_table) {
                 of_property_read_u32_array(pdev->dev.of_node, prop_name, volt_table, count);
                 
-                for (i = 0; i < count; i++) {
+                for (i = 0; i < num_entries; i++) {
                     c->osm_table[i].open_loop_volt = volt_table[i];
                     
                     data = clk_osm_read_reg(c, VOLT_REG + i * OSM_REG_SIZE);
@@ -1045,11 +1046,8 @@ static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c)
                 }
                 
                 kfree(volt_table);
-                pr_info("DT read voltage: success override %s to Hardware!\n", prop_name);
+                pr_info("DT read voltage: success override %d entries of %s to Hardware!\n", num_entries, prop_name);
             }
-        } else if (count > 0) {
-            pr_err("DT read voltage: fail! override voltage %s (%d) not match from HW (%d)\n", 
-                   prop_name, count, j); 
         }
     }
 

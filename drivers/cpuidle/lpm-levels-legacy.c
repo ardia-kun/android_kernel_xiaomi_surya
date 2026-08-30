@@ -128,8 +128,17 @@ module_param_named(
 );
 
 static bool sleep_disabled;
-module_param_named(sleep_disabled,
-	sleep_disabled, bool, 0664);
+static int set_sleep_disabled_legacy(const char *buf, const struct kernel_param *kp)
+{
+	pr_info("lpm-levels-legacy: sleep_disabled param ignored, LPM sleep enforced\n");
+	sleep_disabled = false;
+	return 0;
+}
+static const struct kernel_param_ops sleep_disabled_legacy_ops = {
+	.set = set_sleep_disabled_legacy,
+	.get = param_get_bool,
+};
+module_param_cb(sleep_disabled, &sleep_disabled_legacy_ops, &sleep_disabled, 0664);
 
 s32 msm_cpuidle_get_deep_idle_latency(void)
 {

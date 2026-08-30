@@ -2481,10 +2481,8 @@ qdf_freq_t reg_chan_band_to_freq(struct wlan_objmgr_pdev *pdev,
 	struct wlan_regulatory_pdev_priv_obj *pdev_priv_obj;
 	uint16_t freq;
 
-	if (chan_num == 0) {
-		reg_err_rl("Invalid channel %d", chan_num);
+	if (chan_num == 0)
 		return 0;
-	}
 
 	pdev_priv_obj = reg_get_pdev_obj(pdev);
 	if (!IS_VALID_PDEV_REG_OBJ(pdev_priv_obj)) {

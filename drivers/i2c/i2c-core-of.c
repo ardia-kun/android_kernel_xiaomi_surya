@@ -34,6 +34,9 @@ static struct i2c_client *of_i2c_register_device(struct i2c_adapter *adap,
 
 	dev_dbg(&adap->dev, "of_i2c: register %pOF\n", node);
 
+	if (!of_find_property(node, "compatible", NULL))
+		return ERR_PTR(-ENODEV);
+
 	if (of_modalias_node(node, info.type, sizeof(info.type)) < 0) {
 		dev_err(&adap->dev, "of_i2c: modalias failure on %pOF\n",
 			node);
@@ -106,9 +109,10 @@ void of_i2c_register_devices(struct i2c_adapter *adap)
 
 		client = of_i2c_register_device(adap, node);
 		if (IS_ERR(client)) {
-			dev_warn(&adap->dev,
-				 "Failed to create I2C device for %pOF\n",
-				 node);
+			if (PTR_ERR(client) != -ENODEV)
+				dev_warn(&adap->dev,
+					 "Failed to create I2C device for %pOF\n",
+					 node);
 			of_node_clear_flag(node, OF_POPULATED);
 		}
 	}
