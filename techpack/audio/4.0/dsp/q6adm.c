@@ -947,7 +947,7 @@ int adm_set_pp_params(int port_id, int copp_idx,
 		goto done;
 	}
 	if (atomic_read(copp_stat) > 0) {
-		pr_err("%s: DSP returned error[%s]\n", __func__,
+		pr_debug("%s: DSP returned error[%s]\n", __func__,
 		       adsp_err_get_err_str(atomic_read(copp_stat)));
 		ret = adsp_err_get_lnx_err_code(atomic_read(copp_stat));
 		goto done;
@@ -1574,7 +1574,7 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			}
 
 			if (payload[1] != 0) {
-				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+				pr_debug("%s: cmd = 0x%x returned error = 0x%x\n",
 					__func__, payload[0], payload[1]);
 			}
 			switch (payload[0]) {

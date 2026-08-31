@@ -1423,7 +1423,7 @@ static int smb5_usb_port_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_input_current_settled(chg, val);
 		break;
 	default:
-		pr_err_ratelimited("Get prop %d is not supported in pc_port\n",
+		pr_debug("Get prop %d is not supported in pc_port\n",
 				psp);
 		return -EINVAL;
 	}
@@ -1444,7 +1444,7 @@ static int smb5_usb_port_set_prop(struct power_supply *psy,
 
 	switch (psp) {
 	default:
-		pr_err_ratelimited("Set prop %d is not supported in pc_port\n",
+		pr_debug("Set prop %d is not supported in pc_port\n",
 				psp);
 		rc = -EINVAL;
 		break;
@@ -2092,7 +2092,7 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_batt_awake(chg, val);
 		break;
 	default:
-		pr_err("batt power supply prop %d not supported\n", psp);
+		pr_debug("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
 	}
 
@@ -4020,7 +4020,7 @@ static int lct_unregister_powermanger(struct smb_charger *chg)
 #define  BATT_40_THRESHOLD    400
 #define  BATT_TEMP_HYSTERESIS     10
 #define  OTG_STEP_HYSTERISIS_DELAY_US		5000000 /* 5 secs */
-#define  OTG_WAKELOCK_HOLD_TIME 2000 /* in ms */
+#define  OTG_WAKELOCK_HOLD_TIME 500 /* in ms */
 
 static int lct_get_otg_chg_current(int temp)
 {
@@ -4082,7 +4082,7 @@ static int step_otg_chg_notifier_call(struct notifier_block *nb,
 
 	if (event != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
-	pr_err("longcheer ,%s:reverse_charge_state=%d\n",__func__,chg->reverse_charge_state);
+	pr_debug("longcheer ,%s:reverse_charge_state=%d\n",__func__,chg->reverse_charge_state);
 	if(!chg->reverse_charge_state)
 		return NOTIFY_OK;
 

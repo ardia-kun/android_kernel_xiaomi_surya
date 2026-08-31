@@ -57,8 +57,8 @@
 #define PATCH_LEVEL 10
 #define FAIL -1
 
-#define WAKELOCK_HOLD_TIME 2000 /* in ms */
-#define FP_UNLOCK_REJECTION_TIMEOUT (WAKELOCK_HOLD_TIME - 500)
+#define WAKELOCK_HOLD_TIME 500 /* in ms */
+#define FP_UNLOCK_REJECTION_TIMEOUT 100
 #define GF_SPIDEV_NAME     "goodix,fingerprint"
 /*device name after register in character*/
 #define GF_DEV_NAME            "goodix_fp"
@@ -510,7 +510,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	default:
-		pr_warn("unsupport cmd:0x%x\n", cmd);
+		pr_debug("unsupport cmd:0x%x\n", cmd);
 		break;
 	}
 

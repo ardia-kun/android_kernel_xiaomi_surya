@@ -2303,7 +2303,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 			val->intval = POWER_SUPPLY_STATUS_FULL;
 			break;
 		default:
-			pr_err("[%s] usb online=%d real_charger_type=%d\n", __func__, usb_online, chg->real_charger_type);
+			pr_debug("[%s] usb online=%d real_charger_type=%d\n", __func__, usb_online, chg->real_charger_type);
 			if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD) && ((chg->typec_mode >= POWER_SUPPLY_TYPEC_SOURCE_DEFAULT)
 				&& (chg->typec_mode <= POWER_SUPPLY_TYPEC_SOURCE_HIGH)))
 				val->intval = POWER_SUPPLY_STATUS_CHARGING;
@@ -4484,7 +4484,7 @@ static int smblib_get_prop_ufp_mode(struct smb_charger *chg)
 	rc = smblib_read(chg, TYPE_C_SNK_DEBUG_ACC_STATUS_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read TYPE_C_STATUS_1 rc=%d\n", rc);
-		pr_err("[%s] return POWER_SUPPLY_TYPEC_NONE\n", __func__);
+		pr_debug("[%s] return POWER_SUPPLY_TYPEC_NONE\n", __func__);
 		return POWER_SUPPLY_TYPEC_NONE;
 	}
 
@@ -6097,7 +6097,7 @@ unsuspend_input:
 		vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, true,
 				QC2_UNSUPPORTED_UA);
 		chg->qc2_unsupported = true;
-		pr_err("[%s] enter! qc2_unsupported=%d\n", chg->qc2_unsupported);
+		pr_debug("[%s] enter! qc2_unsupported=%d\n", __func__, chg->qc2_unsupported);
 	}
 
 	return IRQ_HANDLED;
@@ -6906,7 +6906,7 @@ int smblib_get_quick_charge_type(struct smb_charger *chg)
 			|| (pval.intval == POWER_SUPPLY_HEALTH_HOT))
 		return 0;
 
-	pr_err("[%s] real_charger_type=%d pd_verifed=%d qc_class_ab=%d\n", __func__, chg->real_charger_type, chg->pd_verifed, chg->qc_class_ab);
+	pr_debug("[%s] real_charger_type=%d pd_verifed=%d qc_class_ab=%d\n", __func__, chg->real_charger_type, chg->pd_verifed, chg->qc_class_ab);
 	/* davinic do not need to report this type */
 	if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)
 				&& chg->pd_verifed && chg->qc_class_ab) {

@@ -734,7 +734,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 					atomic_set(&this_afe.clk_status, payload[1]);
 				else
 					atomic_set(&this_afe.status, payload[1]);
-				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+				pr_debug("%s: cmd = 0x%x returned error = 0x%x\n",
 					__func__, payload[0], payload[1]);
 			}
 			switch (payload[0]) {
@@ -1115,7 +1115,7 @@ static int afe_apr_send_pkt(void *data, wait_queue_head_t *wait)
 				trace_printk("%s: wait for ADSP response timed out\n",
 					__func__);
 			} else if (atomic_read(&this_afe.status) > 0) {
-				pr_err("%s: DSP returned error[%s]\n", __func__,
+				pr_debug("%s: DSP returned error[%s]\n", __func__,
 					adsp_err_get_err_str(atomic_read(
 					&this_afe.status)));
 				ret = adsp_err_get_lnx_err_code(
@@ -2412,7 +2412,7 @@ static int afe_send_port_topology_id(u16 port_id)
 					       q6audio_get_port_index(port_id),
 					       param_info, (u8 *) &topology);
 	if (ret) {
-		pr_err("%s: AFE set topology id enable for port 0x%x failed %d\n",
+		pr_debug("%s: AFE set topology id enable for port 0x%x failed %d\n",
 			__func__, port_id, ret);
 		goto done;
 	}
@@ -2420,7 +2420,7 @@ static int afe_send_port_topology_id(u16 port_id)
 	this_afe.topology[index] = topology_id;
 	rtac_update_afe_topology(port_id);
 done:
-	pr_info("%s: AFE set topology id 0x%x  enable for port 0x%x ret %d\n",
+	pr_debug("%s: AFE set topology id 0x%x  enable for port 0x%x ret %d\n",
 			__func__, topology_id, port_id, ret);
 	return ret;
 

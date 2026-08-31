@@ -5090,8 +5090,11 @@ static ssize_t sysfs_hbm_write(struct device *dev,
 	mutex_lock(&display->display_lock);
 
 	display->panel->hbm_mode = hbm_mode;
-	if (!dsi_panel_initialized(display->panel))
-		goto error;
+	if (!dsi_panel_initialized(display->panel) ||
+	    display->panel->power_mode != SDE_MODE_DPMS_ON) {
+		mutex_unlock(&display->display_lock);
+		return count;
+	}
 
 	ret = dsi_display_clk_ctrl(display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_ON);
