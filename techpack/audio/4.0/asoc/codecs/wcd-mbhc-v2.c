@@ -1584,12 +1584,18 @@ static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
 	union power_supply_propval mode;
 	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, fsa_nb);
 
-	ret = power_supply_get_property(ptr,
+	if (evt != PSY_EVENT_PROP_CHANGED || !ptr)
+		return 0;
+
+	memset(&mode, 0, sizeof(mode));
+	ret = power_supply_get_property((struct power_supply *)ptr,
 			POWER_SUPPLY_PROP_TYPEC_MODE, &mode);
+	if (ret)
+		return 0;
 
 	switch (mode.intval) {
 	case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
-		dev_err(mbhc->codec->component.dev, "%s: report Type-C usb headphone\n", __func__);
+		dev_dbg(mbhc->codec->component.dev, "%s: report Type-C usb headphone\n", __func__);
 		if (mbhc->usbc_mode == mode.intval)
 			break; /* filter notifications received before */
 		wcd_mbhc_jack_report(mbhc, &mbhc->usb_3_5_jack,
@@ -1600,10 +1606,6 @@ static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
 	case POWER_SUPPLY_TYPEC_NONE:
 		if (mbhc->usbc_mode == mode.intval)
 			break; /* filter notifications received before */
-		if (mbhc->usbc_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
-			mbhc->usbc_mode = mode.intval - 1;
-			break;
-		}
 		wcd_mbhc_jack_report(mbhc, &mbhc->usb_3_5_jack, 0,
 					WCD_MBHC_JACK_USB_3_5_MASK);
 		mbhc->usbc_mode = mode.intval;
@@ -1612,7 +1614,7 @@ static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
 		break;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
