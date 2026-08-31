@@ -2159,6 +2159,8 @@ struct dentry *__d_lookup_rcu(const struct dentry *parent,
 	struct hlist_bl_node *node;
 	struct dentry *dentry;
 
+	prefetch(b->first);
+
 	/*
 	 * Note: There is significant duplication with __d_lookup_rcu which is
 	 * required to prevent single threaded performance regressions
@@ -2281,6 +2283,8 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 	struct hlist_bl_node *node;
 	struct dentry *found = NULL;
 	struct dentry *dentry;
+
+	prefetch(b->first);
 
 	/*
 	 * Note: There is significant duplication with __d_lookup_rcu which is

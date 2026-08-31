@@ -2386,6 +2386,7 @@ unsigned long zs_compact(struct zs_pool *pool)
 		if (class->index != i)
 			continue;
 		pages_freed += __zs_compact(pool, class);
+		cond_resched();
 	}
 	atomic_long_add(pages_freed, &pool->stats.pages_compacted);
 	atomic_set(&pool->compaction_in_progress, 0);

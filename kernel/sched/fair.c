@@ -107,15 +107,15 @@ enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_L
  *
  * (default: 3 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_base_slice			= 3000000ULL;
-static unsigned int normalized_sysctl_sched_base_slice	= 3000000ULL;
+unsigned int sysctl_sched_base_slice			= 2000000ULL;
+static unsigned int normalized_sysctl_sched_base_slice	= 2000000ULL;
 
 /*
  * To enable/disable energy aware feature.
  */
 unsigned int __read_mostly sysctl_sched_energy_aware = 1;
 
-const_debug unsigned int sysctl_sched_migration_cost	= 5000000UL;
+const_debug unsigned int sysctl_sched_migration_cost	= 500000UL;
 DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
 
 #ifdef CONFIG_SCHED_WALT
