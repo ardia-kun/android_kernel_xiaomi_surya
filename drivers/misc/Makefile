@@ -97,3 +97,4 @@ obj-$(CONFIG_DRV2624_HAPTIC) += drv2624_haptic/
 obj-$(CONFIG_LDO_WL2866D)     += wl2866d.o
 obj-$(CONFIG_DYNAMIC_FSYNC)   += dynamic_fsync.o
 obj-$(CONFIG_KLAPSE)          += klapse.o
+obj-$(CONFIG_AUTO_DROP_CACHES)+= auto_drop_caches.o

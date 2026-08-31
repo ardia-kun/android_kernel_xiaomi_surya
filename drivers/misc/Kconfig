@@ -651,3 +651,11 @@ config KLAPSE
 	help
 	  KLAPSE is a kernel-level display color temperature, blue-light filter,
 	  and brightness/solar effect manager without userspace overhead.
+
+config AUTO_DROP_CACHES
+	bool "Auto Drop Caches (Auto Clear Cache)"
+	default y
+	help
+	  Automatically frees unused pagecache and slab dentries/inodes
+	  when the screen is turned off or periodically, freeing up RAM
+	  for foreground apps and games without invoking aggressive LMK kills.
