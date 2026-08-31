@@ -225,14 +225,14 @@ echo ""
 print_step "6" "6" "🌐" "Uploading to Pixeldrain Cloud..."
 
 UPLOAD_RESP=$(curl -s -T "$ZIP_NAME" -u :3aaaa5a9-2da7-4cbc-93f5-74bcf33b9e3f https://pixeldrain.com/api/file/ || true)
-FILE_ID=$(echo "$UPLOAD_RESP" | grep -o ""id":"[^"]*" | cut -d""" -f4 || echo "")
+FILE_ID=$(echo "$UPLOAD_RESP" | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 
 if [ -n "$FILE_ID" ]; then
     DOWNLOAD_URL="https://pixeldrain.com/u/${FILE_ID}"
     echo -e "      ${GREEN}✔ Upload completed successfully!${NC}"
 else
     DOWNLOAD_URL="Upload failed or offline"
-    echo -e "      ${YELLOW}⚠️ Notice: Upload response not recognized${NC}"
+    echo -e "      ${YELLOW}⚠️ Notice: Upload response: ${UPLOAD_RESP}${NC}"
 fi
 
 cd ..
