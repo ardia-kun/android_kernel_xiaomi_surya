@@ -875,4 +875,90 @@ struct tc_pie_xstats {
 	__u32 maxq;             /* maximum queue size */
 	__u32 ecn_mark;         /* packets marked with ecn*/
 };
+
+/* CAKE */
+enum {
+	TCA_CAKE_UNSPEC,
+	TCA_CAKE_PAD,
+	TCA_CAKE_BASE_RATE64,
+	TCA_CAKE_DIFFSERV_MODE,
+	TCA_CAKE_ATM,
+	TCA_CAKE_FLOW_MODE,
+	TCA_CAKE_OVERHEAD,
+	TCA_CAKE_RTT,
+	TCA_CAKE_TARGET,
+	TCA_CAKE_AUTORATE,
+	TCA_CAKE_MEMORY,
+	TCA_CAKE_NAT,
+	TCA_CAKE_RAW,
+	TCA_CAKE_WASH,
+	TCA_CAKE_MPU,
+	TCA_CAKE_INGRESS,
+	TCA_CAKE_ACK_FILTER,
+	TCA_CAKE_SPLIT_GSO,
+	TCA_CAKE_FWMARK,
+	__TCA_CAKE_MAX
+};
+#define TCA_CAKE_MAX	(__TCA_CAKE_MAX - 1)
+
+enum {
+	CAKE_DIFFSERV_DIFFSERV3,
+	CAKE_DIFFSERV_DIFFSERV4,
+	CAKE_DIFFSERV_DIFFSERV8,
+	CAKE_DIFFSERV_BESTEFFORT,
+	CAKE_DIFFSERV_PRECEDENCE,
+	__CAKE_DIFFSERV_MAX
+};
+#define CAKE_DIFFSERV_MAX	(__CAKE_DIFFSERV_MAX - 1)
+
+enum {
+	CAKE_FLOW_NONE = 0,
+	CAKE_FLOW_SRC_IP,
+	CAKE_FLOW_DST_IP,
+	CAKE_FLOW_HOSTS,
+	CAKE_FLOW_FLOWS,
+	CAKE_FLOW_DUAL_SRC,
+	CAKE_FLOW_DUAL_DST,
+	CAKE_FLOW_TRIPLE,
+	__CAKE_FLOW_MAX
+};
+#define CAKE_FLOW_MAX	(__CAKE_FLOW_MAX - 1)
+
+enum {
+	CAKE_ACK_NONE = 0,
+	CAKE_ACK_FILTER,
+	CAKE_ACK_AGGRESSIVE,
+	__CAKE_ACK_MAX
+};
+#define CAKE_ACK_MAX	(__CAKE_ACK_MAX - 1)
+
+enum {
+	CAKE_ATM_NONE = 0,
+	CAKE_ATM_ATM,
+	CAKE_ATM_PTM,
+	__CAKE_ATM_MAX
+};
+#define CAKE_ATM_MAX	(__CAKE_ATM_MAX - 1)
+
+struct tc_cake_xstats {
+	__u16 version;
+	__u8  max_tins;
+	__u8  tin_cnt;
+
+	__u32 capacity_estimate64_hi;
+	__u32 capacity_estimate64_lo;
+	__u32 memory_limit;
+	__u32 memory_used;
+	__u32 avg_netoff;
+	__u32 min_netlen;
+	__u32 max_netlen;
+	__u32 min_adjlen;
+	__u32 max_adjlen;
+	__u32 cur_tin;
+	__u32 cur_delay;
+	__u32 av_delay;
+	__u32 peak_delay;
+	__u32 base_delay;
+};
 #endif
+

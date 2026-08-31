@@ -635,3 +635,19 @@ config OKL4_LINK_SHBUF
 	      transport. This driver presents the link to Linux as a character device
 	      which can be written to or read from to access the shared memory. An ioctl
 	      on the device is used to send a virtual interrupt to the partner cell.
+
+config DYNAMIC_FSYNC
+	bool "Dynamic Fsync"
+	default y
+	help
+	  Dynamic Fsync disables synchronous fsync calls when screen is on,
+	  greatly boosting I/O write performance and reducing UI/game stuttering,
+	  while automatically re-enabling fsync and flushing dirty data
+	  when screen turns off.
+
+config KLAPSE
+	bool "KLAPSE (Kernel-Level Automated Picture-adjustment & Solar Effect)"
+	default y
+	help
+	  KLAPSE is a kernel-level display color temperature, blue-light filter,
+	  and brightness/solar effect manager without userspace overhead.
