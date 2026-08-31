@@ -127,22 +127,24 @@ CLANG_VER=$("$CLANG_BIN" --version | head -n 1)
 echo -e "      ${GRAY}Compiler:${NC} ${GREEN}${CLANG_VER}${NC}"
 echo ""
 
+export PATH="$(pwd)/clang/bin:$PATH"
+
 # ------------------------------------------------------------------------------
 # 2. Prepare Kernel Configuration
 # ------------------------------------------------------------------------------
 print_step "2" "6" "⚙️" "Generating Defconfig (${DEFCONFIG})..."
 
-make O=out -j${JOBS} ARCH=arm64 CC="${CLANG_BIN}" CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- LLVM_IAS=1 ${DEFCONFIG} > /dev/null
+make O=out -j${JOBS} ARCH=arm64 CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- LLVM_IAS=1 ${DEFCONFIG} > /dev/null
 echo -e "      ${GREEN}✔ Configuration created successfully in out/.config${NC}"
 echo ""
 
 # ------------------------------------------------------------------------------
 # 3. Kernel Compilation
 # ------------------------------------------------------------------------------
-print_step "3" "6" "🛠️" "Compiling Kernel (Image & DTBO)..."
+print_step "3" "6" "🛠️" "Compiling Kernel with ThinLTO (Image & DTBO)..."
 BUILD_START=$(date +%s)
 
-if ! make O=out -j${JOBS} ARCH=arm64 CC="${CLANG_BIN}" CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- LLVM_IAS=1 2>error.log; then
+if ! make O=out -j${JOBS} ARCH=arm64 CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- LLVM_IAS=1 2>error.log; then
     echo ""
     echo -e "${RED}${BOLD}╔═══════════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${RED}${BOLD}║                      ❌ BUILD FAILED WITH ERRORS                      ║${NC}"
