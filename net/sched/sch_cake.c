@@ -76,8 +76,6 @@ struct cake_sched_data {
 	struct qdisc_watchdog watchdog;
 };
 
-static void cake_reconfigure(struct Qdisc *sch);
-
 static int cake_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct cake_sched_data *q = qdisc_priv(sch);

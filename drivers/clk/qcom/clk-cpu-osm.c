@@ -992,6 +992,12 @@ static int clk_osm_read_lut(struct platform_device *pdev, struct clk_osm *c)
     u32 *volt_table;
 
 	c->dev = &pdev->dev;
+
+	/* Ensure row 0 in OSM hardware LUT uses OSM_INIT_RATE (300MHz) */
+	data = clk_osm_read_reg(c, FREQ_REG);
+	data &= ~GENMASK(31, 30);
+	clk_osm_write_reg(c, data, FREQ_REG);
+
 	for (i = 0; i < c->osm_table_size; i++) {
 		data = clk_osm_read_reg(c, FREQ_REG + i * OSM_REG_SIZE);
 		src = ((data & GENMASK(31, 30)) >> 30);
