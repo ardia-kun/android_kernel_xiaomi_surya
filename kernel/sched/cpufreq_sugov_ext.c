@@ -851,7 +851,6 @@ static struct kobj_type sugov_ext_tunables_ktype = {
 /********************** cpufreq governor interface *********************/
 
 static struct cpufreq_governor sugov_ext_gov;
-static struct cpufreq_governor sugov_ext_dash_gov;
 
 static struct sugov_ext_policy *sugov_ext_policy_alloc(struct cpufreq_policy *policy)
 {
@@ -1189,17 +1188,6 @@ static struct cpufreq_governor sugov_ext_gov = {
 	.limits = sugov_ext_limits,
 };
 
-static struct cpufreq_governor sugov_ext_dash_gov = {
-	.name = "sugov-ext",
-	.owner = THIS_MODULE,
-	.dynamic_switching = true,
-	.init = sugov_ext_init,
-	.exit = sugov_ext_exit,
-	.start = sugov_ext_start,
-	.stop = sugov_ext_stop,
-	.limits = sugov_ext_limits,
-};
-
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_SUGOV_EXT
 struct cpufreq_governor *cpufreq_default_governor(void)
 {
@@ -1209,16 +1197,6 @@ struct cpufreq_governor *cpufreq_default_governor(void)
 
 static int __init sugov_ext_register(void)
 {
-	int ret = cpufreq_register_governor(&sugov_ext_gov);
-	if (ret)
-		return ret;
-
-	ret = cpufreq_register_governor(&sugov_ext_dash_gov);
-	if (ret) {
-		cpufreq_unregister_governor(&sugov_ext_gov);
-		return ret;
-	}
-
-	return 0;
+	return cpufreq_register_governor(&sugov_ext_gov);
 }
 fs_initcall(sugov_ext_register);
