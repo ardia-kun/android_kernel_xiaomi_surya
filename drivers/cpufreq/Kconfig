@@ -111,6 +111,16 @@ config CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 	  have a look at the help section of that governor. The fallback
 	  governor will be 'performance'.
 
+config CPU_FREQ_DEFAULT_GOV_SUGOV_EXT
+	bool "sugov_ext"
+	depends on SMP
+	select CPU_FREQ_GOV_SUGOV_EXT
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+	  Use the 'sugov_ext' (schedutil extended) CPUFreq governor by default.
+	  If unsure, have a look at the help section of that governor. The
+	  fallback governor will be 'performance'.
+
 config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	bool "interactive"
 	select CPU_FREQ_GOV_INTERACTIVE
@@ -229,6 +239,19 @@ config CPU_FREQ_GOV_SCHEDUTIL
 	  both cases.
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_SUGOV_EXT
+	bool "'sugov_ext' (schedutil extended) cpufreq policy governor"
+	depends on CPU_FREQ && SMP
+	select CPU_FREQ_GOV_ATTR_SET
+	select IRQ_WORK
+	help
+	  This is an extended, highly tunable variant of the schedutil governor
+	  (sugov_ext). It utilizes scheduler-provided CPU utilization data (PELT/WALT/EAS/UCLAMP)
+	  with enhanced sysfs tunables for aggressive/fine-tuned frequency scaling,
+	  customizable rate limits, boost profiles, and hispeed frequencies.
+
+	  If in doubt, say Y.
 
 config CPU_FREQ_GOV_INTERACTIVE
 	tristate "'interactive' cpufreq policy governor"
