@@ -29,6 +29,7 @@ struct sugov_ext_tunables {
 	bool			pl;
 	bool			iowait_boost_enable;
 	bool			fast_ramp_down;
+	bool			step_down_freq;
 };
 
 struct sugov_ext_policy {
@@ -246,21 +247,35 @@ static unsigned int sugov_ext_get_next_freq(struct sugov_ext_policy *sg_policy,
 					    unsigned long util, unsigned long max)
 {
 	struct cpufreq_policy *policy = sg_policy->policy;
-	unsigned int freq = arch_scale_freq_invariant() ?
+	unsigned int base_freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
 	unsigned int target_load = sg_policy->tunables->freq_margin_load;
+	unsigned int freq;
+	u64 tmp;
 
 	if (unlikely(sg_policy->tunables->boost))
 		return policy->cpuinfo.max_freq;
 
-	if (target_load == 80) {
-		freq = (freq + (freq >> 2)) * util / max;
-	} else if (target_load > 0 && target_load <= 100) {
-		u64 tmp = (u64)freq * (u64)util * 100ULL;
-		do_div(tmp, (u64)max * (u64)target_load);
-		freq = (unsigned int)tmp;
-	} else {
-		freq = (freq + (freq >> 2)) * util / max;
+	if (unlikely(target_load < 20 || target_load > 100))
+		target_load = DEFAULT_TARGET_LOAD;
+
+	/* 64-bit precise calculation: freq = base_freq * (util / max) * (100 / target_load) */
+	tmp = (u64)base_freq * (u64)util * 100ULL;
+	do_div(tmp, (u64)max * (u64)target_load);
+	freq = (unsigned int)tmp;
+
+	/* Ensure hispeed_freq jump if util reaches hispeed_load threshold */
+	if (sg_policy->tunables->hispeed_freq &&
+	    util >= mult_frac(max, sg_policy->tunables->hispeed_load, 100)) {
+		freq = max(freq, sg_policy->tunables->hispeed_freq);
+	}
+
+	/* Optional step-down gradual scaling under non-idle load */
+	if (sg_policy->tunables->step_down_freq &&
+	    sg_policy->next_freq != UINT_MAX && freq < sg_policy->next_freq) {
+		unsigned int step = (sg_policy->next_freq - freq) >> 1;
+		if (step > 0 && (sg_policy->next_freq - step) > policy->min)
+			freq = sg_policy->next_freq - step;
 	}
 
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
@@ -315,7 +330,7 @@ static void sugov_ext_set_iowait_boost(struct sugov_ext_cpu *sg_cpu, u64 time,
 		sg_cpu->iowait_boost_pending = true;
 
 		if (sg_cpu->iowait_boost) {
-			sg_cpu->iowait_boost <<= 1;
+			sg_cpu->iowait_boost += (sg_cpu->iowait_boost_max >> 2);
 			if (sg_cpu->iowait_boost > sg_cpu->iowait_boost_max)
 				sg_cpu->iowait_boost = sg_cpu->iowait_boost_max;
 		} else {
@@ -652,6 +667,35 @@ static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
+static ssize_t rate_limit_us_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	return sprintf(buf, "%u\n", tunables->up_rate_limit_us);
+}
+
+static ssize_t rate_limit_us_store(struct gov_attr_set *attr_set,
+				   const char *buf, size_t count)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+	struct sugov_ext_policy *sg_policy;
+	unsigned int rate_limit_us;
+
+	if (kstrtouint(buf, 10, &rate_limit_us))
+		return -EINVAL;
+
+	tunables->up_rate_limit_us = rate_limit_us;
+	tunables->down_rate_limit_us = rate_limit_us;
+
+	list_for_each_entry(sg_policy, &attr_set->policy_list, tunables_hook) {
+		sg_policy->up_rate_delay_ns = rate_limit_us * NSEC_PER_USEC;
+		sg_policy->down_rate_delay_ns = rate_limit_us * NSEC_PER_USEC;
+		sugov_ext_update_min_rate_limit_ns(sg_policy);
+	}
+
+	return count;
+}
+
 static ssize_t hispeed_load_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
@@ -667,7 +711,7 @@ static ssize_t hispeed_load_store(struct gov_attr_set *attr_set,
 	if (kstrtouint(buf, 10, &tunables->hispeed_load))
 		return -EINVAL;
 
-	tunables->hispeed_load = min(100U, tunables->hispeed_load);
+	tunables->hispeed_load = clamp_val(tunables->hispeed_load, 1U, 100U);
 
 	return count;
 }
@@ -812,8 +856,27 @@ static ssize_t fast_ramp_down_store(struct gov_attr_set *attr_set, const char *b
 	return count;
 }
 
+static ssize_t step_down_freq_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->step_down_freq);
+}
+
+static ssize_t step_down_freq_store(struct gov_attr_set *attr_set, const char *buf,
+				    size_t count)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	if (kstrtobool(buf, &tunables->step_down_freq))
+		return -EINVAL;
+
+	return count;
+}
+
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
+static struct governor_attr rate_limit_us = __ATTR_RW(rate_limit_us);
 static struct governor_attr hispeed_load = __ATTR_RW(hispeed_load);
 static struct governor_attr hispeed_freq = __ATTR_RW(hispeed_freq);
 static struct governor_attr freq_margin_load = __ATTR_RW(freq_margin_load);
@@ -821,10 +884,12 @@ static struct governor_attr boost = __ATTR_RW(boost);
 static struct governor_attr pl = __ATTR_RW(pl);
 static struct governor_attr iowait_boost_enable = __ATTR_RW(iowait_boost_enable);
 static struct governor_attr fast_ramp_down = __ATTR_RW(fast_ramp_down);
+static struct governor_attr step_down_freq = __ATTR_RW(step_down_freq);
 
 static struct attribute *sugov_ext_attributes[] = {
 	&up_rate_limit_us.attr,
 	&down_rate_limit_us.attr,
+	&rate_limit_us.attr,
 	&hispeed_load.attr,
 	&hispeed_freq.attr,
 	&freq_margin_load.attr,
@@ -832,6 +897,7 @@ static struct attribute *sugov_ext_attributes[] = {
 	&pl.attr,
 	&iowait_boost_enable.attr,
 	&fast_ramp_down.attr,
+	&step_down_freq.attr,
 	NULL
 };
 
@@ -963,6 +1029,7 @@ static void sugov_ext_tunables_save(struct cpufreq_policy *policy,
 	cached->down_rate_limit_us = tunables->down_rate_limit_us;
 	cached->iowait_boost_enable = tunables->iowait_boost_enable;
 	cached->fast_ramp_down = tunables->fast_ramp_down;
+	cached->step_down_freq = tunables->step_down_freq;
 }
 
 static void sugov_ext_clear_global_tunables(void)
@@ -989,6 +1056,7 @@ static void sugov_ext_tunables_restore(struct cpufreq_policy *policy)
 	tunables->down_rate_limit_us = cached->down_rate_limit_us;
 	tunables->iowait_boost_enable = cached->iowait_boost_enable;
 	tunables->fast_ramp_down = cached->fast_ramp_down;
+	tunables->step_down_freq = cached->step_down_freq;
 	sugov_ext_update_min_rate_limit_ns(sg_policy);
 }
 
@@ -1034,15 +1102,26 @@ static int sugov_ext_init(struct cpufreq_policy *policy)
 		goto stop_kthread;
 	}
 
+	/* Intelligent default configuration tuned for SM7150 Kryo big.LITTLE */
 	tunables->up_rate_limit_us = 500;
-	tunables->down_rate_limit_us = 4000;
-	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
-	tunables->hispeed_freq = 0;
 	tunables->freq_margin_load = DEFAULT_TARGET_LOAD;
 	tunables->boost = false;
 	tunables->pl = false;
 	tunables->iowait_boost_enable = false;
 	tunables->fast_ramp_down = true;
+	tunables->step_down_freq = false;
+
+	if (policy->cpuinfo.max_freq > 2000000) {
+		/* Big Cluster (Gold cores, e.g. 2.3GHz) */
+		tunables->down_rate_limit_us = 4000;
+		tunables->hispeed_load = 90;
+		tunables->hispeed_freq = cpufreq_driver_resolve_freq(policy, 1536000);
+	} else {
+		/* Little Cluster (Silver cores, e.g. 1.8GHz) */
+		tunables->down_rate_limit_us = 5000;
+		tunables->hispeed_load = 85;
+		tunables->hispeed_freq = cpufreq_driver_resolve_freq(policy, 1324800);
+	}
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
