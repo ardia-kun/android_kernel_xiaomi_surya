@@ -41,6 +41,11 @@
 #include <linux/gfp.h>
 #include <linux/syscore_ops.h>
 #include <linux/version.h>
+#ifndef LINUX_VERSION_MAJOR
+#define LINUX_VERSION_MAJOR ((LINUX_VERSION_CODE >> 16) & 0xff)
+#define LINUX_VERSION_PATCHLEVEL ((LINUX_VERSION_CODE >> 8) & 0xff)
+#define LINUX_VERSION_SUBLEVEL (LINUX_VERSION_CODE & 0xff)
+#endif
 #include <linux/ctype.h>
 #include <linux/mm.h>
 #include <linux/mempolicy.h>
