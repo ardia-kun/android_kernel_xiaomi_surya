@@ -268,15 +268,17 @@ static inline int cpuidle_register_governor(struct cpuidle_governor *gov)
 ({								\
 	int __ret;						\
 								\
-	if (!idx) {						\
+	if (need_resched()) {					\
+		__ret = -1;					\
+	} else if (!idx) {					\
 		cpu_do_idle();					\
 		return idx;					\
-	}							\
-								\
-	__ret = cpu_pm_enter();					\
-	if (!__ret) {						\
-		__ret = low_level_idle_enter(idx);		\
-		cpu_pm_exit();					\
+	} else {						\
+		__ret = cpu_pm_enter();				\
+		if (!__ret) {					\
+			__ret = low_level_idle_enter(idx);	\
+			cpu_pm_exit();				\
+		}						\
 	}							\
 								\
 	__ret ? -1 : idx;					\
