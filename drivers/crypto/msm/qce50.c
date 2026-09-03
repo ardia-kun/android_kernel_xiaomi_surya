@@ -5720,13 +5720,13 @@ static int __qce_get_device_tree_data(struct platform_device *pdev,
 	if (of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,bam-ee",
 				&pce_dev->ce_bam_info.bam_ee)) {
-		pr_info("BAM Apps EE is not defined, setting to default 1\n");
+		pr_debug("BAM Apps EE is not defined, setting to default 1\n");
 		pce_dev->ce_bam_info.bam_ee = 1;
 	}
 	if (of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,ce-opp-freq",
 				&pce_dev->ce_opp_freq_hz)) {
-		pr_info("CE operating frequency is not defined, setting to default 100MHZ\n");
+		pr_debug("CE operating frequency is not defined, setting to default 100MHZ\n");
 		pce_dev->ce_opp_freq_hz = CE_CLK_100MHZ;
 	}
 

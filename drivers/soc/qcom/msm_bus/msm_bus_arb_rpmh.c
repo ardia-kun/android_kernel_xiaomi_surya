@@ -1309,7 +1309,7 @@ static uint32_t register_client_adhoc(struct msm_bus_scale_pdata *pdata)
 		}
 		client->src_devs[i] = dev;
 
-		MSM_BUS_ERR("%s:find path.src %d dest %d",
+		MSM_BUS_DBG("%s:find path.src %d dest %d",
 				__func__, src, dest);
 
 		lnode[i] = getpath(dev, dest, client->pdata->name);
@@ -1772,7 +1772,7 @@ static int query_client_usecase_all(struct msm_bus_tcs_handle *tcs_handle,
 	if (!strcmp(test_cl, pdata->name))
 		log_transaction = true;
 
-	MSM_BUS_ERR("%s: query_start", __func__);
+	MSM_BUS_DBG("%s: query_start", __func__);
 	for (i = 0; i < pdata->num_usecases; i++)
 		query_usecase(client, log_transaction, i,
 						&tcs_handle->usecases[i]);

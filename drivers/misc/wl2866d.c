@@ -193,7 +193,7 @@ int wl2866d_camera_power_up(uint16_t camera_id)
 		pr_err("xyz wl2866d unknown camera!!!\n");
 	}
 
-	pr_err("xyz wl2866d result = %d\n", ret);
+	pr_debug("xyz wl2866d result = %d\n", ret);
 	return ret;
 }
 EXPORT_SYMBOL(wl2866d_camera_power_up);
@@ -527,7 +527,7 @@ void wl2866d_print_reg(struct  wl2866d_chip *chip)
 
 	for (i = 0 ; i < ARRAY_SIZE(wl2866d_on_config); i++) {
 		wl2866d_i2c_read(chip, wl2866d_on_config[i].reg, &reg_val);
-		pr_err("%s:wl2866d info is reg %d, value %d\n", __func__, wl2866d_on_config[i].reg, reg_val);
+		pr_debug("%s:wl2866d info is reg %d, value %d\n", __func__, wl2866d_on_config[i].reg, reg_val);
 	}
 
 }

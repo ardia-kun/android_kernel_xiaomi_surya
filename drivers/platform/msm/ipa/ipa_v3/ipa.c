@@ -8675,8 +8675,9 @@ static int ipa3_smp2p_probe(struct device *dev)
 			qcom_smem_state_get(dev, "ipa-smp2p-out",
 			&ipa3_ctx->smp2p_info.smem_bit);
 			if (IS_ERR(ipa3_ctx->smp2p_info.smem_state)) {
-				IPAERR("fail to get smp2p clk resp bit %ld\n",
-				PTR_ERR(ipa3_ctx->smp2p_info.smem_state));
+				if (PTR_ERR(ipa3_ctx->smp2p_info.smem_state) != -EPROBE_DEFER)
+					IPAERR("fail to get smp2p clk resp bit %ld\n",
+					PTR_ERR(ipa3_ctx->smp2p_info.smem_state));
 				return PTR_ERR(ipa3_ctx->smp2p_info.smem_state);
 			}
 			IPADBG("smem_bit=%d\n", ipa3_ctx->smp2p_info.smem_bit);
@@ -9090,7 +9091,7 @@ void ipa_pc_qmp_enable(void)
 	mbox_data->mbox = mbox_request_channel(&mbox_data->mbox_client, 0);
 	if (IS_ERR(mbox_data->mbox)) {
 		ret = PTR_ERR(mbox_data->mbox);
-		if (ret != -EPROBE_DEFER)
+		if (ret != -EPROBE_DEFER && ret != -ENODEV && ret != -ENOENT)
 			IPAERR("mailbox channel request failed, ret=%d\n", ret);
 
 		return;

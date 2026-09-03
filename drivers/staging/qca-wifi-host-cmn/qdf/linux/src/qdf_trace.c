@@ -3231,10 +3231,8 @@ void qdf_trace_msg_cmn(unsigned int idx,
 	int n;
 
 	/* Check if index passed is valid */
-	if (idx < 0 || idx >= MAX_PRINT_CONFIG_SUPPORTED) {
-		pr_info("%s: Invalid index - %d\n", __func__, idx);
+	if (idx < 0 || idx >= MAX_PRINT_CONFIG_SUPPORTED)
 		return;
-	}
 
 	/* Check if print control object is in use */
 	if (!print_ctrl_obj[idx].in_use) {

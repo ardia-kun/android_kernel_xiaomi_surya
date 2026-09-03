@@ -363,17 +363,17 @@ bad_uc_top_ofst:
 int ipa3_uc_state_check(void)
 {
 	if (!ipa3_ctx->uc_ctx.uc_inited) {
-		IPAERR("uC interface not initialized\n");
+		IPADBG("uC interface not initialized\n");
 		return -EFAULT;
 	}
 
 	if (!ipa3_ctx->uc_ctx.uc_loaded) {
-		IPAERR("uC is not loaded\n");
+		IPADBG("uC is not loaded\n");
 		return -EFAULT;
 	}
 
 	if (ipa3_ctx->uc_ctx.uc_failed) {
-		IPAERR("uC has failed its last command\n");
+		IPADBG("uC has failed its last command\n");
 		return -EFAULT;
 	}
 

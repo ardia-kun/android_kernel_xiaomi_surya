@@ -3477,7 +3477,7 @@ static void __flush_debug_queue(struct venus_hfi_device *device, u8 *packet)
 			 * line.
 			 */
 			pkt->rg_msg_data[pkt->msg_size-1] = '\0';
-			dprintk(log_level, "%s", &pkt->rg_msg_data[1]);
+			dprintk(VIDC_DBG, "%s", &pkt->rg_msg_data[1]);
 		}
 	}
 #undef SKIP_INVALID_PKT

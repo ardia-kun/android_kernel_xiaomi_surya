@@ -809,7 +809,7 @@ int32_t core_get_license_status(uint32_t module_id)
 
 fail_cmd:
 	mutex_unlock(&(q6core_lcl.cmd_lock));
-	pr_info("%s: cmdrsp_license_result.result = 0x%x for module 0x%x\n",
+	pr_debug("%s: cmdrsp_license_result.result = 0x%x for module 0x%x\n",
 				__func__, ret, module_id);
 	return ret;
 }

@@ -1565,7 +1565,7 @@ int ipa3_connect_gsi_wdi_pipe(struct ipa_wdi_in_params *in,
 		gsi_channel_props.ring_base_vaddr;
 
 	num_ring_ele = ep->gsi_mem_info.evt_ring_len/gsi_evt_ring_props.re_size;
-	IPAERR("UPDATE_RI_MODERATION_THRESHOLD: %d\n", num_ring_ele);
+	IPADBG("UPDATE_RI_MODERATION_THRESHOLD: %d\n", num_ring_ele);
 	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_5) {
 		if (IPA_CLIENT_IS_PROD(in->sys.client)) {
 			gsi_scratch.wdi.wifi_rx_ri_addr_low =
@@ -3130,10 +3130,8 @@ int ipa3_uc_reg_rdyCB(
 {
 	int result = 0;
 
-	if (inout == NULL) {
-		IPAERR("bad parm. inout=%pK ", inout);
+	if (inout == NULL)
 		return -EINVAL;
-	}
 
 	result = ipa3_uc_state_check();
 	if (result) {

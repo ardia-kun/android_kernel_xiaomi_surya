@@ -181,7 +181,7 @@ static struct msm_bus_fab_device_type *get_fab_device_info(
 	ret = of_property_read_u32(dev_node, "qcom,bus-type",
 						&fab_dev->bus_type);
 	if (ret)
-		dev_warn(&pdev->dev, "Bus type is missing\n");
+		dev_dbg(&pdev->dev, "Bus type is missing\n");
 
 	ret = of_property_read_u32(dev_node, "qcom,qos-freq",
 						&fab_dev->qos_freq);

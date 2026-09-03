@@ -1806,7 +1806,7 @@ static int qg_get_prop_soc_decimal(struct qpnp_qg *chip, int *val)
 
 	soc_dec = chip->sys_soc % 100;
 	soc = qg_get_prop_soc_decimal_rate(chip, &dec_rate);
-	pr_err("debug soc_dec=%d dec_rate=%d last_val=%d last_soc_dec=%d last_hal_soc=%d\n",
+	pr_debug("debug soc_dec=%d dec_rate=%d last_val=%d last_soc_dec=%d last_hal_soc=%d\n",
 			soc_dec, dec_rate, last_val, last_soc_dec, last_hal_soc);
 
 	if (soc_dec >= 0 && soc_dec < (50 - dec_rate))
@@ -1834,7 +1834,7 @@ static int qg_get_prop_soc_decimal(struct qpnp_qg *chip, int *val)
 	if (last_hal_soc != hal_soc)
 		last_hal_soc = hal_soc;
 
-	pr_err("debug val=%d soc_dec=%d sys_soc=%d dec_rate=%d soc=%d hal_soc=%d last_val=%d last_soc_dec=%d last_hal_soc=%d\n",
+	pr_debug("debug val=%d soc_dec=%d sys_soc=%d dec_rate=%d soc=%d hal_soc=%d last_val=%d last_soc_dec=%d last_hal_soc=%d\n",
 			*val, soc_dec, chip->sys_soc, dec_rate, soc, hal_soc, last_val, last_soc_dec, last_hal_soc);
 
 	return 0;
@@ -3397,14 +3397,14 @@ static int qg_load_battery_profile(struct qpnp_qg *chip)
 						profile_node = of_batterydata_get_best_profile(chip->batt_node,
 							chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
 						profile_6000mah_judge = false;
-						pr_err("lct profile_6000mah_judge=%d,chip->profile_judge_done=%d,pval.arrayval[0]=%c,pval.arrayval[3]=%c,pval.arrayval[4]=%c\n",
+						pr_debug("lct profile_6000mah_judge=%d,chip->profile_judge_done=%d,pval.arrayval[0]=%c,pval.arrayval[3]=%c,pval.arrayval[4]=%c\n",
 				                        profile_6000mah_judge,chip->profile_judge_done,pval.arrayval[0],pval.arrayval[3],pval.arrayval[4]);
 				       }
 				}else{
 					profile_node = of_batterydata_get_best_profile(chip->batt_node,
 							chip->batt_id_ohm / 1000, "m703-pm7150b-atl-5160mah");
 					profile_6000mah_judge = false;
-					pr_err("lct profile_6000mah_judge=%d,chip->profile_judge_done=%d,pval.arrayval[0]=%c,pval.arrayval[3]=%c,pval.arrayval[4]=%c\n",
+					pr_debug("lct profile_6000mah_judge=%d,chip->profile_judge_done=%d,pval.arrayval[0]=%c,pval.arrayval[3]=%c,pval.arrayval[4]=%c\n",
 	                                          profile_6000mah_judge,chip->profile_judge_done,pval.arrayval[0],pval.arrayval[3],pval.arrayval[4]);
 				}
 

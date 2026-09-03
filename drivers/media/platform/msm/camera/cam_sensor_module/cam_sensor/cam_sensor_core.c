@@ -827,7 +827,7 @@ int32_t msm_sensor_init_device_name(void)
 
 	pr_debug("%s %d\n", __func__, __LINE__);
 	if (msm_sensor_device != NULL) {
-		pr_err("Macle android_camera already created\n");
+		pr_debug("Macle android_camera already created\n");
 		return 0;
 	}
 	msm_sensor_device = kobject_create_and_add("android_camera", NULL);

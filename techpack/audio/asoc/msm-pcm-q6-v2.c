@@ -1965,11 +1965,11 @@ static int msm_pcm_path_latency_ctl_get(struct snd_kcontrol *kcontrol,
 	substream = pdata->pcm[kcontrol->private_value]->
 			streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 	if (!substream) {
-		pr_err("%s substream not found\n", __func__);
+		pr_debug("%s substream not found\n", __func__);
 		return -EINVAL;
 	}
 	if (!substream->runtime) {
-		pr_err("%s substream runtime not found\n", __func__);
+		pr_debug("%s substream runtime not found\n", __func__);
 		return -EINVAL;
 	}
 

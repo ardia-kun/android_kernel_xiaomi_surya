@@ -139,7 +139,7 @@ module_param_named(print_parsed_dt, print_parsed_dt, bool, 0664);
 static bool sleep_disabled;
 static int set_sleep_disabled(const char *buf, const struct kernel_param *kp)
 {
-	pr_info("lpm-levels: bootloader sleep_disabled param ignored, LPM sleep enforced\n");
+	pr_debug("lpm-levels: bootloader sleep_disabled param ignored, LPM sleep enforced\n");
 	sleep_disabled = false;
 	return 0;
 }
@@ -1742,7 +1742,6 @@ static void register_cluster_lpm_stats(struct lpm_cluster *cl,
 	kfree(level_name);
 
 	list_for_each_entry(cpu, &cl->cpu, list) {
-		pr_err("%s()\n", __func__);
 		register_cpu_lpm_stats(cpu, cl);
 	}
 	if (!list_empty(&cl->cpu))

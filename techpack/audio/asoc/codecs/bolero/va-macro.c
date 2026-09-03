@@ -1560,8 +1560,8 @@ static int va_macro_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, dmic_sample_rate,
 				   &sample_rate);
 	if (ret) {
-		dev_err(&pdev->dev, "%s: could not find %d entry in dt\n",
-			__func__, sample_rate);
+		dev_dbg(&pdev->dev, "%s: could not find %s entry in dt, using default clk div\n",
+			__func__, dmic_sample_rate);
 		va_priv->dmic_clk_div = VA_MACRO_CLK_DIV_2;
 	} else {
 		if (va_macro_validate_dmic_sample_rate(

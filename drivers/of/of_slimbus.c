@@ -35,8 +35,10 @@ int of_register_slim_devices(struct slim_controller *ctrl)
 		char *name;
 
 		prop = of_find_property(node, "elemental-addr", NULL);
-		if (!prop || prop->length != 6) {
-			dev_err(&ctrl->dev, "of_slim: invalid E-addr");
+		if (!prop)
+			continue;
+		if (prop->length != 6) {
+			dev_err(&ctrl->dev, "of_slim: invalid E-addr\n");
 			continue;
 		}
 		name = kzalloc(SLIMBUS_NAME_SIZE, GFP_KERNEL);

@@ -334,7 +334,7 @@ static int service_notifier_new_server(struct qmi_handle *qmi,
 	data->s_addr.sq_node = svc->node;
 	data->s_addr.sq_port = svc->port;
 	data->service_connected = true;
-	pr_info("Connection established between QMI handle and %d service\n",
+	pr_debug("Connection established between QMI handle and %d service\n",
 							data->instance_id);
 	queue_work(data->svc_event_wq, &data->new_server);
 	return 0;

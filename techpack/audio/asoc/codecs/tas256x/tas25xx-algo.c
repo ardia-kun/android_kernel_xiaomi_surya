@@ -5,6 +5,11 @@
 #include <linux/fs.h>
 #include "tas25xx-calib.h"
 
+#ifdef pr_info
+#undef pr_info
+#define pr_info(fmt, ...) pr_debug(fmt, ##__VA_ARGS__)
+#endif
+
 #define USE_VFS			1
 #define CODEC_CONTROL		1
 #define POISON_VAL		0xDEADDEAD

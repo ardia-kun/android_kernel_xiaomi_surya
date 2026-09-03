@@ -384,6 +384,9 @@ static int cam_destroy_hdl(int32_t dev_hdl, int dev_hdl_type)
 	int idx;
 	int type;
 
+	if (dev_hdl <= 0)
+		return -EINVAL;
+
 	spin_lock_bh(&hdl_tbl_lock);
 	if (!hdl_tbl) {
 		CAM_ERR(CAM_CRM, "Hdl tbl is NULL");

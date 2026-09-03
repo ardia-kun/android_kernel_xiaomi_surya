@@ -4113,7 +4113,7 @@ static long fastrpc_device_ioctl(struct file *file, unsigned int ioctl_num,
 		break;
 	default:
 		err = -ENOTTY;
-		pr_info("bad ioctl: %d\n", ioctl_num);
+		pr_debug("bad ioctl: %d\n", ioctl_num);
 		break;
 	}
  bail:
@@ -4394,9 +4394,9 @@ static int fastrpc_cb_probe(struct device *dev)
 		debugfs_global_file = debugfs_create_file("global", 0644,
 			debugfs_root, NULL, &debugfs_fops);
 		if (IS_ERR_OR_NULL(debugfs_global_file)) {
-			pr_warn("Error: %s: %s: failed to create debugfs global file\n",
+			pr_debug("Error: %s: %s: failed to create debugfs global file\n",
 				current->comm, __func__);
-			debugfs_global_file = NULL;
+			debugfs_global_file = ERR_PTR(-ENODEV);
 		}
 	}
 bail:

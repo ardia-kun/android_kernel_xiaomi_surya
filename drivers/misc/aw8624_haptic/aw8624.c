@@ -34,6 +34,11 @@
 #include "aw8624_reg.h"
 #include "aw8624.h"
 
+#ifdef pr_debug
+#undef pr_debug
+#define pr_debug(fmt, ...) no_printk(fmt, ##__VA_ARGS__)
+#endif
+
 /******************************************************
  *
  * Marco

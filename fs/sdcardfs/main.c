@@ -149,10 +149,10 @@ static int parse_options(struct super_block *sb, char *options, int silent,
 	}
 
 	if (*debug) {
-		pr_info("sdcardfs : options - debug:%d\n", *debug);
-		pr_info("sdcardfs : options - uid:%d\n",
+		pr_debug("sdcardfs : options - debug:%d\n", *debug);
+		pr_debug("sdcardfs : options - uid:%d\n",
 							opts->fs_low_uid);
-		pr_info("sdcardfs : options - gid:%d\n",
+		pr_debug("sdcardfs : options - gid:%d\n",
 							opts->fs_low_gid);
 	}
 
@@ -213,9 +213,9 @@ int parse_options_remount(struct super_block *sb, char *options, int silent,
 	}
 
 	if (debug) {
-		pr_info("sdcardfs : options - debug:%d\n", debug);
-		pr_info("sdcardfs : options - gid:%d\n", vfsopts->gid);
-		pr_info("sdcardfs : options - mask:%d\n", vfsopts->mask);
+		pr_debug("sdcardfs : options - debug:%d\n", debug);
+		pr_debug("sdcardfs : options - gid:%d\n", vfsopts->gid);
+		pr_debug("sdcardfs : options - mask:%d\n", vfsopts->mask);
 	}
 
 	return 0;
@@ -277,9 +277,9 @@ static int sdcardfs_read_super(struct vfsmount *mnt, struct super_block *sb,
 		goto out;
 	}
 
-	pr_info("sdcardfs: dev_name -> %s\n", dev_name);
-	pr_info("sdcardfs: options -> %s\n", (char *)raw_data);
-	pr_info("sdcardfs: mnt -> %pK\n", mnt);
+	pr_debug("sdcardfs: dev_name -> %s\n", dev_name);
+	pr_debug("sdcardfs: options -> %s\n", (char *)raw_data);
+	pr_debug("sdcardfs: mnt -> %pK\n", mnt);
 
 	/* parse lower path */
 	err = kern_path(dev_name, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,
