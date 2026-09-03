@@ -41,40 +41,51 @@ enum sugov_ext_workload {
 	WORKLOAD_GAMING,
 };
 
-static enum sugov_ext_workload sugov_ext_detect_workload(struct task_struct *task)
+static bool sugov_ext_match_comm(const char *comm, const char *pattern)
+{
+	if (!comm || !pattern)
+		return false;
+	return strnstr(comm, pattern, 16) != NULL;
+}
+
+static enum sugov_ext_workload sugov_ext_check_task(struct task_struct *task)
 {
 	const char *comm;
+	const char *leader_comm = NULL;
 
 	if (!task)
 		return WORKLOAD_DEFAULT;
 
 	comm = task->comm;
-	if (!comm)
-		return WORKLOAD_DEFAULT;
+	if (task->group_leader)
+		leader_comm = task->group_leader->comm;
 
-	/* Video call & voip apps: Cap frequencies for low temperatures and long battery */
-	if (strnstr(comm, "whatsapp", 16) ||
-	    strnstr(comm, "telegram", 16) ||
-	    strnstr(comm, "tachyon", 16) ||   /* Google Meet */
-	    strnstr(comm, "zoom", 16) ||
-	    strnstr(comm, "skype", 16) ||
-	    strnstr(comm, "discord", 16) ||
-	    strnstr(comm, "orca", 16) ||      /* Messenger */
-	    strnstr(comm, "wechat", 16) ||
-	    strnstr(comm, "voip", 16)) {
+	/* Video call & VoIP apps (WhatsApp, Telegram, Meet, Zoom, Discord, etc.) */
+	if (sugov_ext_match_comm(comm, "whatsa") || sugov_ext_match_comm(leader_comm, "whatsa") ||
+	    sugov_ext_match_comm(comm, "telegra") || sugov_ext_match_comm(leader_comm, "telegra") ||
+	    sugov_ext_match_comm(comm, "voip") || sugov_ext_match_comm(comm, "VoIP") ||
+	    sugov_ext_match_comm(comm, "call") || sugov_ext_match_comm(comm, "webrtc") ||
+	    sugov_ext_match_comm(comm, "WebRTC") || sugov_ext_match_comm(comm, "zoom") ||
+	    sugov_ext_match_comm(leader_comm, "zoom") || sugov_ext_match_comm(comm, "skype") ||
+	    sugov_ext_match_comm(comm, "discord") || sugov_ext_match_comm(leader_comm, "discord") ||
+	    sugov_ext_match_comm(comm, "orca") || sugov_ext_match_comm(leader_comm, "orca") ||
+	    sugov_ext_match_comm(comm, "wechat") || sugov_ext_match_comm(leader_comm, "wechat") ||
+	    sugov_ext_match_comm(comm, "meet") || sugov_ext_match_comm(leader_comm, "meet")) {
 		return WORKLOAD_VIDEOCALL;
 	}
 
-	/* Gaming detection: Dynamic on-demand scaling with higher responsiveness */
-	if (strnstr(comm, "mobile.legends", 16) ||
-	    strnstr(comm, "freefire", 16) ||
-	    strnstr(comm, "pubg", 16) ||
-	    strnstr(comm, "genshin", 16) ||
-	    strnstr(comm, "miHoYo", 16) ||
-	    strnstr(comm, "Unity", 16) ||
-	    strnstr(comm, "roblox", 16) ||
-	    strnstr(comm, "minecraft", 16) ||
-	    strnstr(comm, "codm", 16)) {
+	/* Gaming detection (Game engines, render threads, and popular game titles) */
+	if (sugov_ext_match_comm(comm, "Unity") || sugov_ext_match_comm(comm, "RenderThread") ||
+	    sugov_ext_match_comm(comm, "GLThread") || sugov_ext_match_comm(comm, "GameThread") ||
+	    sugov_ext_match_comm(comm, "Unreal") || sugov_ext_match_comm(comm, "mobile.leg") ||
+	    sugov_ext_match_comm(leader_comm, "mobile.leg") || sugov_ext_match_comm(comm, "freefire") ||
+	    sugov_ext_match_comm(leader_comm, "freefire") || sugov_ext_match_comm(comm, "pubg") ||
+	    sugov_ext_match_comm(leader_comm, "pubg") || sugov_ext_match_comm(comm, "genshin") ||
+	    sugov_ext_match_comm(leader_comm, "genshin") || sugov_ext_match_comm(comm, "mihoyo") ||
+	    sugov_ext_match_comm(leader_comm, "mihoyo") || sugov_ext_match_comm(comm, "roblox") ||
+	    sugov_ext_match_comm(leader_comm, "roblox") || sugov_ext_match_comm(comm, "minecra") ||
+	    sugov_ext_match_comm(leader_comm, "minecra") || sugov_ext_match_comm(comm, "codm") ||
+	    sugov_ext_match_comm(leader_comm, "codm")) {
 		return WORKLOAD_GAMING;
 	}
 
@@ -101,6 +112,10 @@ struct sugov_ext_policy {
 	unsigned int cached_raw_freq;
 	unsigned long hispeed_util;
 	unsigned long max;
+
+	/* AI Workload Tracker with Hysteresis */
+	enum sugov_ext_workload active_workload;
+	u64 workload_expiry_time;
 
 	/* The next fields are only needed if fast switch cannot be used. */
 	struct irq_work irq_work;
@@ -284,6 +299,28 @@ static void sugov_ext_update_commit(struct sugov_ext_policy *sg_policy, u64 time
 	}
 }
 
+static enum sugov_ext_workload sugov_ext_get_current_workload(struct sugov_ext_policy *sg_policy)
+{
+	u64 now = sched_ktime_clock();
+	enum sugov_ext_workload detected;
+
+	if (!sg_policy->tunables->smart_app_aware)
+		return WORKLOAD_DEFAULT;
+
+	detected = sugov_ext_check_task(current);
+	if (detected != WORKLOAD_DEFAULT) {
+		sg_policy->active_workload = detected;
+		sg_policy->workload_expiry_time = now + 2000000000ULL; /* 2s hysteresis */
+		return detected;
+	}
+
+	if (now < sg_policy->workload_expiry_time)
+		return sg_policy->active_workload;
+
+	sg_policy->active_workload = WORKLOAD_DEFAULT;
+	return WORKLOAD_DEFAULT;
+}
+
 #define DEFAULT_TARGET_LOAD 80
 
 /**
@@ -301,10 +338,7 @@ static unsigned int sugov_ext_get_next_freq(struct sugov_ext_policy *sg_policy,
 	unsigned int target_load = sg_policy->tunables->freq_margin_load;
 	unsigned int freq;
 	u64 tmp;
-	enum sugov_ext_workload wl = WORKLOAD_DEFAULT;
-
-	if (sg_policy->tunables->smart_app_aware)
-		wl = sugov_ext_detect_workload(current);
+	enum sugov_ext_workload wl = sugov_ext_get_current_workload(sg_policy);
 
 	if (unlikely(sg_policy->tunables->boost))
 		return policy->cpuinfo.max_freq;
@@ -1001,6 +1035,24 @@ static ssize_t game_target_load_store(struct gov_attr_set *attr_set, const char 
 	return count;
 }
 
+static ssize_t current_workload_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_ext_policy *sg_policy;
+	const char *str = "Default";
+
+	list_for_each_entry(sg_policy, &attr_set->policy_list, tunables_hook) {
+		if (sg_policy->active_workload == WORKLOAD_VIDEOCALL) {
+			str = "VideoCall";
+			break;
+		} else if (sg_policy->active_workload == WORKLOAD_GAMING) {
+			str = "Gaming";
+			break;
+		}
+	}
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", str);
+}
+
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr rate_limit_us = __ATTR_RW(rate_limit_us);
@@ -1015,6 +1067,7 @@ static struct governor_attr step_down_freq = __ATTR_RW(step_down_freq);
 static struct governor_attr smart_app_aware = __ATTR_RW(smart_app_aware);
 static struct governor_attr vc_max_freq = __ATTR_RW(vc_max_freq);
 static struct governor_attr game_target_load = __ATTR_RW(game_target_load);
+static struct governor_attr current_workload = __ATTR_RO(current_workload);
 
 static struct attribute *sugov_ext_attributes[] = {
 	&up_rate_limit_us.attr,
@@ -1031,6 +1084,7 @@ static struct attribute *sugov_ext_attributes[] = {
 	&smart_app_aware.attr,
 	&vc_max_freq.attr,
 	&game_target_load.attr,
+	&current_workload.attr,
 	NULL
 };
 
