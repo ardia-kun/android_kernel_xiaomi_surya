@@ -30,7 +30,56 @@ struct sugov_ext_tunables {
 	bool			iowait_boost_enable;
 	bool			fast_ramp_down;
 	bool			step_down_freq;
+	bool			smart_app_aware;
+	unsigned int		vc_max_freq;
+	unsigned int		game_target_load;
 };
+
+enum sugov_ext_workload {
+	WORKLOAD_DEFAULT = 0,
+	WORKLOAD_VIDEOCALL,
+	WORKLOAD_GAMING,
+};
+
+static enum sugov_ext_workload sugov_ext_detect_workload(struct task_struct *task)
+{
+	const char *comm;
+
+	if (!task)
+		return WORKLOAD_DEFAULT;
+
+	comm = task->comm;
+	if (!comm)
+		return WORKLOAD_DEFAULT;
+
+	/* Video call & voip apps: Cap frequencies for low temperatures and long battery */
+	if (strnstr(comm, "whatsapp", 16) ||
+	    strnstr(comm, "telegram", 16) ||
+	    strnstr(comm, "tachyon", 16) ||   /* Google Meet */
+	    strnstr(comm, "zoom", 16) ||
+	    strnstr(comm, "skype", 16) ||
+	    strnstr(comm, "discord", 16) ||
+	    strnstr(comm, "orca", 16) ||      /* Messenger */
+	    strnstr(comm, "wechat", 16) ||
+	    strnstr(comm, "voip", 16)) {
+		return WORKLOAD_VIDEOCALL;
+	}
+
+	/* Gaming detection: Dynamic on-demand scaling with higher responsiveness */
+	if (strnstr(comm, "mobile.legends", 16) ||
+	    strnstr(comm, "freefire", 16) ||
+	    strnstr(comm, "pubg", 16) ||
+	    strnstr(comm, "genshin", 16) ||
+	    strnstr(comm, "miHoYo", 16) ||
+	    strnstr(comm, "Unity", 16) ||
+	    strnstr(comm, "roblox", 16) ||
+	    strnstr(comm, "minecraft", 16) ||
+	    strnstr(comm, "codm", 16)) {
+		return WORKLOAD_GAMING;
+	}
+
+	return WORKLOAD_DEFAULT;
+}
 
 struct sugov_ext_policy {
 	struct cpufreq_policy *policy;
@@ -252,9 +301,24 @@ static unsigned int sugov_ext_get_next_freq(struct sugov_ext_policy *sg_policy,
 	unsigned int target_load = sg_policy->tunables->freq_margin_load;
 	unsigned int freq;
 	u64 tmp;
+	enum sugov_ext_workload wl = WORKLOAD_DEFAULT;
+
+	if (sg_policy->tunables->smart_app_aware)
+		wl = sugov_ext_detect_workload(current);
 
 	if (unlikely(sg_policy->tunables->boost))
 		return policy->cpuinfo.max_freq;
+
+	/*
+	 * Intelligent Workload Tuning:
+	 * - Gaming: Responsive scaling (lower target load = faster ramp-up)
+	 * - Video Call / VoIP: Power-saving scaling (higher target load = cooler operation)
+	 */
+	if (wl == WORKLOAD_GAMING) {
+		target_load = sg_policy->tunables->game_target_load;
+	} else if (wl == WORKLOAD_VIDEOCALL) {
+		target_load = max(target_load, 90U);
+	}
 
 	if (unlikely(target_load < 20 || target_load > 100))
 		target_load = DEFAULT_TARGET_LOAD;
@@ -268,6 +332,11 @@ static unsigned int sugov_ext_get_next_freq(struct sugov_ext_policy *sg_policy,
 	if (sg_policy->tunables->hispeed_freq &&
 	    util >= mult_frac(max, sg_policy->tunables->hispeed_load, 100)) {
 		freq = max(freq, sg_policy->tunables->hispeed_freq);
+	}
+
+	/* Video call frequency capping: avoid thermal runaway and save battery */
+	if (wl == WORKLOAD_VIDEOCALL && sg_policy->tunables->vc_max_freq) {
+		freq = min(freq, sg_policy->tunables->vc_max_freq);
 	}
 
 	/* Optional step-down gradual scaling under non-idle load */
@@ -874,6 +943,64 @@ static ssize_t step_down_freq_store(struct gov_attr_set *attr_set, const char *b
 	return count;
 }
 
+static ssize_t smart_app_aware_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->smart_app_aware);
+}
+
+static ssize_t smart_app_aware_store(struct gov_attr_set *attr_set, const char *buf,
+				     size_t count)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	if (kstrtobool(buf, &tunables->smart_app_aware))
+		return -EINVAL;
+
+	return count;
+}
+
+static ssize_t vc_max_freq_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->vc_max_freq);
+}
+
+static ssize_t vc_max_freq_store(struct gov_attr_set *attr_set, const char *buf,
+				 size_t count)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+	unsigned int val;
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
+
+	tunables->vc_max_freq = val;
+	return count;
+}
+
+static ssize_t game_target_load_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->game_target_load);
+}
+
+static ssize_t game_target_load_store(struct gov_attr_set *attr_set, const char *buf,
+				      size_t count)
+{
+	struct sugov_ext_tunables *tunables = to_sugov_ext_tunables(attr_set);
+	unsigned int val;
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
+
+	tunables->game_target_load = clamp_val(val, 20U, 100U);
+	return count;
+}
+
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr rate_limit_us = __ATTR_RW(rate_limit_us);
@@ -885,6 +1012,9 @@ static struct governor_attr pl = __ATTR_RW(pl);
 static struct governor_attr iowait_boost_enable = __ATTR_RW(iowait_boost_enable);
 static struct governor_attr fast_ramp_down = __ATTR_RW(fast_ramp_down);
 static struct governor_attr step_down_freq = __ATTR_RW(step_down_freq);
+static struct governor_attr smart_app_aware = __ATTR_RW(smart_app_aware);
+static struct governor_attr vc_max_freq = __ATTR_RW(vc_max_freq);
+static struct governor_attr game_target_load = __ATTR_RW(game_target_load);
 
 static struct attribute *sugov_ext_attributes[] = {
 	&up_rate_limit_us.attr,
@@ -898,6 +1028,9 @@ static struct attribute *sugov_ext_attributes[] = {
 	&iowait_boost_enable.attr,
 	&fast_ramp_down.attr,
 	&step_down_freq.attr,
+	&smart_app_aware.attr,
+	&vc_max_freq.attr,
+	&game_target_load.attr,
 	NULL
 };
 
@@ -1030,6 +1163,9 @@ static void sugov_ext_tunables_save(struct cpufreq_policy *policy,
 	cached->iowait_boost_enable = tunables->iowait_boost_enable;
 	cached->fast_ramp_down = tunables->fast_ramp_down;
 	cached->step_down_freq = tunables->step_down_freq;
+	cached->smart_app_aware = tunables->smart_app_aware;
+	cached->vc_max_freq = tunables->vc_max_freq;
+	cached->game_target_load = tunables->game_target_load;
 }
 
 static void sugov_ext_clear_global_tunables(void)
@@ -1057,6 +1193,9 @@ static void sugov_ext_tunables_restore(struct cpufreq_policy *policy)
 	tunables->iowait_boost_enable = cached->iowait_boost_enable;
 	tunables->fast_ramp_down = cached->fast_ramp_down;
 	tunables->step_down_freq = cached->step_down_freq;
+	tunables->smart_app_aware = cached->smart_app_aware;
+	tunables->vc_max_freq = cached->vc_max_freq;
+	tunables->game_target_load = cached->game_target_load;
 	sugov_ext_update_min_rate_limit_ns(sg_policy);
 }
 
@@ -1103,24 +1242,29 @@ static int sugov_ext_init(struct cpufreq_policy *policy)
 	}
 
 	/* Intelligent default configuration tuned for SM7150 Kryo big.LITTLE */
-	tunables->up_rate_limit_us = 500;
 	tunables->freq_margin_load = DEFAULT_TARGET_LOAD;
 	tunables->boost = false;
 	tunables->pl = false;
 	tunables->iowait_boost_enable = false;
 	tunables->fast_ramp_down = true;
 	tunables->step_down_freq = false;
+	tunables->smart_app_aware = true;
+	tunables->game_target_load = 75;
 
 	if (policy->cpuinfo.max_freq > 2000000) {
-		/* Big Cluster (Gold cores, e.g. 2.3GHz) */
-		tunables->down_rate_limit_us = 4000;
-		tunables->hispeed_load = 90;
+		/* Big Cluster (Gold cores, e.g. 2.3GHz) - Cooler & Battery friendly */
+		tunables->up_rate_limit_us = 2000;
+		tunables->down_rate_limit_us = 8000;
+		tunables->hispeed_load = 92;
 		tunables->hispeed_freq = cpufreq_driver_resolve_freq(policy, 1536000);
+		tunables->vc_max_freq = cpufreq_driver_resolve_freq(policy, 1536000);
 	} else {
-		/* Little Cluster (Silver cores, e.g. 1.8GHz) */
-		tunables->down_rate_limit_us = 5000;
-		tunables->hispeed_load = 85;
+		/* Little Cluster (Silver cores, e.g. 1.8GHz) - Smooth daily UI */
+		tunables->up_rate_limit_us = 1000;
+		tunables->down_rate_limit_us = 6000;
+		tunables->hispeed_load = 88;
 		tunables->hispeed_freq = cpufreq_driver_resolve_freq(policy, 1324800);
+		tunables->vc_max_freq = cpufreq_driver_resolve_freq(policy, 1209600);
 	}
 
 	policy->governor_data = sg_policy;
