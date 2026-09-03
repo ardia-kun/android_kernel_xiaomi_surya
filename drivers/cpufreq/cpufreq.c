@@ -793,6 +793,12 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	if (ret != 1)
 		return -EINVAL;
 
+#ifdef CONFIG_CPU_FREQ_GOV_SUGOV_EXT
+	/* Auto-redirect userspace requests for schedutil to sugov_ext */
+	if (!strncmp(str_governor, "schedutil", 9))
+		strncpy(str_governor, "sugov_ext", sizeof(str_governor));
+#endif
+
 	if (cpufreq_parse_governor(str_governor, &new_policy.policy,
 						&new_policy.governor))
 		return -EINVAL;
