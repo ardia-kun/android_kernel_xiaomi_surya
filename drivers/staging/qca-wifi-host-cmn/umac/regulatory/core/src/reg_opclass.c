@@ -209,13 +209,13 @@ static const struct reg_dmn_op_class_map_t euro_op_class[] = {
 	 {149, 153, 157, 161, 165, 169} },
 	{128, 80, BW80, BIT(BEHAV_NONE), 5000,
 	 {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120,
-	  124, 128, 132, 136, 140, 144, 149, 153, 157, 161} },
+	  124, 128} },
 	{129, 160, BW80, BIT(BEHAV_NONE), 5000,
 	 {36, 40, 44, 48, 52, 56, 60, 64, 100,
 	  104, 108, 112, 116, 120, 124, 128} },
 	{130, 80, BW80, BIT(BEHAV_BW80_PLUS), 5000,
 	 {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120,
-	  124, 128, 132, 136, 140, 144, 149, 153, 157, 161} },
+	  124, 128} },
 	{0, 0, 0, 0, 0, {0} },
 };
 
@@ -491,7 +491,6 @@ void reg_freq_width_to_chan_op_class(struct wlan_objmgr_pdev *pdev,
 			op_class_tbl = global_op_class;
 	}
 
-retry_lookup:
 	while (op_class_tbl->op_class) {
 		if (op_class_tbl->chan_spacing >= chan_width) {
 			for (i = 0; (i < REG_MAX_CHANNELS_PER_OPERATING_CLASS &&
@@ -508,11 +507,6 @@ retry_lookup:
 			}
 		}
 		op_class_tbl++;
-	}
-
-	if (op_class_tbl != global_op_class) {
-		op_class_tbl = global_op_class;
-		goto retry_lookup;
 	}
 
 	reg_err_rl("no op class for frequency %d", freq);
