@@ -76,7 +76,7 @@
 #define CFG_LATENCY_LEVEL CFG_INI_UINT("wlm_latency_level", \
 				       0, \
 				       3, \
-				       0, \
+				       2, \
 				       CFG_VALUE_OR_DEFAULT, \
 				       "WLM latency level")
 
