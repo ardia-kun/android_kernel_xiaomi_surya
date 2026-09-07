@@ -15,6 +15,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/kobject.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
@@ -3945,6 +3946,84 @@ LctIsInCall = input;
 	return count;
 }
 
+#define BYPASS_CHG_VOTER		"BYPASS_CHG_VOTER"
+#define FORCE_FAST_CHG_VOTER		"FORCE_FAST_CHG_VOTER"
+
+static int bypass_charge_enabled = 0;
+static int force_fast_charge_enabled = 0;
+
+static ssize_t bypass_charge_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", bypass_charge_enabled);
+}
+
+static ssize_t bypass_charge_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int val;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	bypass_charge_enabled = !!val;
+
+	if (__smbchg && __smbchg->chg_disable_votable) {
+		vote(__smbchg->chg_disable_votable, BYPASS_CHG_VOTER,
+		     bypass_charge_enabled, 0);
+		pr_info("fastcharge: bypass_charge set to %d\n", bypass_charge_enabled);
+	}
+
+	return count;
+}
+
+static ssize_t force_fast_charge_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", force_fast_charge_enabled);
+}
+
+static ssize_t force_fast_charge_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int val;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	force_fast_charge_enabled = !!val;
+
+	if (__smbchg && __smbchg->usb_icl_votable) {
+		if (force_fast_charge_enabled) {
+			vote(__smbchg->usb_icl_votable, FORCE_FAST_CHG_VOTER, true, 900000);
+		} else {
+			vote(__smbchg->usb_icl_votable, FORCE_FAST_CHG_VOTER, false, 0);
+		}
+		rerun_election(__smbchg->usb_icl_votable);
+		pr_info("fastcharge: force_fast_charge set to %d\n", force_fast_charge_enabled);
+	}
+
+	return count;
+}
+
+static struct kobj_attribute bypass_charge_attr =
+	__ATTR(bypass_charge, 0664, bypass_charge_show, bypass_charge_store);
+
+static struct kobj_attribute force_fast_charge_attr =
+	__ATTR(force_fast_charge, 0664, force_fast_charge_show, force_fast_charge_store);
+
+static struct attribute *fastcharge_attrs[] = {
+	&bypass_charge_attr.attr,
+	&force_fast_charge_attr.attr,
+	NULL,
+};
+
+static struct attribute_group fastcharge_attr_group = {
+	.attrs = fastcharge_attrs,
+};
+
+static struct kobject *fastcharge_kobj;
+
 static struct device_attribute attrs2[] = {
 	__ATTR(thermalcall, S_IRUGO | S_IWUSR,
 			lct_thermal_call_status_show, lct_thermal_call_status_store),
@@ -4420,6 +4499,17 @@ pr_debug_ratelimited("enter sysfs create file thermal\n");
 	if (chg->dcin_uusb_over_gpio_en && gpio_is_valid(chg->micro_usb_gpio))
 		smb_micro_usb_irq_handler(chg->micro_usb_irq, chg);
 
+	if (!fastcharge_kobj) {
+		fastcharge_kobj = kobject_create_and_add("fastcharge", kernel_kobj);
+		if (fastcharge_kobj) {
+			rc = sysfs_create_group(fastcharge_kobj, &fastcharge_attr_group);
+			if (rc) {
+				kobject_put(fastcharge_kobj);
+				fastcharge_kobj = NULL;
+			}
+		}
+	}
+
 pr_debug_ratelimited("QPNP SMB5 probed successfully\n");
 
 	return rc;
@@ -4442,6 +4532,12 @@ static int smb5_remove(struct platform_device *pdev)
 	struct smb5 *chip = platform_get_drvdata(pdev);
 	struct smb_charger *chg = &chip->chg;
 	unsigned char attr_count2;
+
+	if (fastcharge_kobj) {
+		sysfs_remove_group(fastcharge_kobj, &fastcharge_attr_group);
+		kobject_put(fastcharge_kobj);
+		fastcharge_kobj = NULL;
+	}
 
 	for (attr_count2 = 0; attr_count2 < ARRAY_SIZE(attrs2); attr_count2++) {
 			  sysfs_remove_file(&chg->dev->kobj,
