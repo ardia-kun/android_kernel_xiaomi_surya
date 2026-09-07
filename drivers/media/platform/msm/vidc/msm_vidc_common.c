@@ -6047,12 +6047,17 @@ int msm_vidc_comm_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 	else if ((fps > 1) && (fps % 24 == 1 || fps % 15 == 1))
 		fps = fps - 1;
 
-	if (fps < inst->capability.frame_rate.min ||
-			fps > inst->capability.frame_rate.max) {
+	if (fps < inst->capability.frame_rate.min) {
+		dprintk(VIDC_DBG,
+			"FPS clamped to min: fps = %d, Min = %d\n",
+			fps, inst->capability.frame_rate.min);
+		fps = inst->capability.frame_rate.min;
+	}
+
+	if (fps > inst->capability.frame_rate.max) {
 		dprintk(VIDC_ERR,
-			"FPS is out of limits : fps = %d Min = %d, Max = %d\n",
-			fps, inst->capability.frame_rate.min,
-			inst->capability.frame_rate.max);
+			"FPS is out of limits : fps = %d Max = %d\n",
+			fps, inst->capability.frame_rate.max);
 		rc = -EINVAL;
 		goto exit;
 	}
