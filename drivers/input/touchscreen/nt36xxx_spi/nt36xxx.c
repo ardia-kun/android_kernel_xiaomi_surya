@@ -207,7 +207,8 @@ static inline int32_t spi_read_write(struct spi_device *client, uint8_t *buf, si
 {
 	struct spi_message m;
 	struct spi_transfer t = {
-		.len    = len,
+		.len      = len,
+		.speed_hz = client->max_speed_hz,
 	};
 
 	memcpy(ts->xbuf, buf, len);
@@ -1667,6 +1668,8 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	}
 	ts->client->bits_per_word = 8;
 	ts->client->mode = SPI_MODE_0;
+	if (ts->client->max_speed_hz < 16000000)
+		ts->client->max_speed_hz = 16000000;
 
 	ret = spi_setup(ts->client);
 	if (ret < 0) {
