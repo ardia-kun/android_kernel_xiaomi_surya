@@ -19,6 +19,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/kobject.h>
 #include <linux/firmware.h>
 #include <linux/slab.h>
 #include <linux/version.h>
@@ -2100,7 +2101,8 @@ static int aw8624_haptic_init(struct aw8624 *aw8624)
 	ret = aw8624_i2c_read(aw8624, AW8624_REG_WAVSEQ1, &reg_val);
 	aw8624->index = reg_val & 0x7F;
 	ret = aw8624_i2c_read(aw8624, AW8624_REG_DATDBG, &reg_val);
-	aw8624->gain = reg_val & 0xFF;
+	aw8624->gain = 128;
+	aw8624_haptic_set_gain(aw8624, aw8624->gain);
 	for (i = 0; i < AW8624_SEQUENCER_SIZE; i++) {
 		ret = aw8624_i2c_read(aw8624, AW8624_REG_WAVSEQ1 + i, &reg_val);
 		aw8624->seq[i] = reg_val;
@@ -4024,6 +4026,56 @@ static struct attribute_group aw8624_vibrator_attribute_group = {
 	.attrs = aw8624_vibrator_attributes
 };
 
+static struct kobject *haptics_kobj;
+
+static ssize_t haptic_gain_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	if (!g_aw8624)
+		return -ENODEV;
+	return snprintf(buf, PAGE_SIZE, "%d\n", g_aw8624->gain);
+}
+
+static ssize_t haptic_gain_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int val = 0;
+	int rc;
+
+	if (!g_aw8624)
+		return -ENODEV;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0)
+		return rc;
+
+	if (val > 0x80)
+		val = 0x80;
+
+	mutex_lock(&g_aw8624->lock);
+	g_aw8624->gain = val;
+	aw8624_haptic_set_gain(g_aw8624, g_aw8624->gain);
+	mutex_unlock(&g_aw8624->lock);
+
+	return count;
+}
+
+static struct kobj_attribute haptic_vibration_strength_attr =
+	__ATTR(vibration_strength, 0664, haptic_gain_show, haptic_gain_store);
+
+static struct kobj_attribute haptic_gain_kobj_attr =
+	__ATTR(gain, 0664, haptic_gain_show, haptic_gain_store);
+
+static struct attribute *haptics_attrs[] = {
+	&haptic_vibration_strength_attr.attr,
+	&haptic_gain_kobj_attr.attr,
+	NULL,
+};
+
+static struct attribute_group haptics_attr_group = {
+	.attrs = haptics_attrs,
+};
+
 /******************************************************
  *
  * i2c driver
@@ -4225,6 +4277,19 @@ aw8624_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	}
 
 	g_aw8624 = aw8624;
+	g_aw8624->gain = 128;
+	aw8624_haptic_set_gain(g_aw8624, g_aw8624->gain);
+
+	if (!haptics_kobj) {
+		haptics_kobj = kobject_create_and_add("haptics", kernel_kobj);
+		if (haptics_kobj) {
+			ret = sysfs_create_group(haptics_kobj, &haptics_attr_group);
+			if (ret) {
+				kobject_put(haptics_kobj);
+				haptics_kobj = NULL;
+			}
+		}
+	}
 
 	pr_debug("%s probe completed successfully!\n", __func__);
 
@@ -4254,6 +4319,13 @@ static int aw8624_i2c_remove(struct i2c_client *i2c)
 	struct aw8624 *aw8624 = i2c_get_clientdata(i2c);
 
 	pr_debug("%s enter\n", __func__);
+
+	if (haptics_kobj) {
+		sysfs_remove_group(haptics_kobj, &haptics_attr_group);
+		kobject_put(haptics_kobj);
+		haptics_kobj = NULL;
+	}
+	g_aw8624 = NULL;
 
 	sysfs_remove_group(&i2c->dev.kobj, &aw8624_vibrator_attribute_group);
 
