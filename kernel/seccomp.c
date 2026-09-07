@@ -28,6 +28,10 @@
 #include <linux/syscalls.h>
 #include <linux/sysctl.h>
 
+#ifdef CONFIG_KSU_SUSFS
+#include <asm/unistd.h>
+#endif
+
 /* Not exposed in headers: strictly internal use only. */
 #define SECCOMP_MODE_DEAD	(SECCOMP_MODE_FILTER + 1)
 
@@ -678,6 +682,26 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 	filter_ret = seccomp_run_filters(sd, &match);
 	data = filter_ret & SECCOMP_RET_DATA;
 	action = filter_ret & SECCOMP_RET_ACTION_FULL;
+
+#ifdef CONFIG_KSU_SUSFS
+	/*
+	 * KernelSU uses sys_reboot(0xDEADBEEF, 0xCAFEBABE, ...) as its
+	 * supercall mechanism. On kernel 4.14, seccomp BPF runs before the
+	 * syscall handler body, so KSU's hook inside SYSCALL_DEFINE4(reboot)
+	 * never gets a chance to execute. Allow __NR_reboot through when it
+	 * carries KSU's magic numbers to prevent SIGSYS kills of libksud.so.
+	 */
+	if (action != SECCOMP_RET_ALLOW && this_syscall == __NR_reboot) {
+		struct seccomp_data sd_ksu;
+		if (!sd) {
+			populate_seccomp_data(&sd_ksu);
+			sd = &sd_ksu;
+		}
+		if (sd->args[0] == 0xDEADBEEF && sd->args[1] == 0xCAFEBABE) {
+			return 0;
+		}
+	}
+#endif
 
 	switch (action) {
 	case SECCOMP_RET_ERRNO:
