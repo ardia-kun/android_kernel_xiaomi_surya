@@ -247,6 +247,19 @@ static inline int freezable_schedule_hrtimeout_range(ktime_t *expires,
  * defined in <linux/wait.h>
  */
 
+/*
+ * Like wait_event_killable(), but freezer-friendly. Threads blocked in this
+ * wait can be frozen during system suspend, preventing freezer timeouts.
+ */
+#define wait_event_freezekillable(wq, condition)			\
+({									\
+	int __retval;							\
+	freezer_do_not_count();						\
+	__retval = wait_event_killable(wq, (condition));		\
+	freezer_count();						\
+	__retval;							\
+})
+
 /* DO NOT ADD ANY NEW CALLERS OF THIS FUNCTION */
 #define wait_event_freezekillable_unsafe(wq, condition)			\
 ({									\
@@ -293,6 +306,9 @@ static inline void set_freezable(void) {}
 
 #define freezable_schedule_hrtimeout_range(expires, delta, mode)	\
 	schedule_hrtimeout_range(expires, delta, mode)
+
+#define wait_event_freezekillable(wq, condition)			\
+		wait_event_killable(wq, condition)
 
 #define wait_event_freezekillable_unsafe(wq, condition)			\
 		wait_event_killable(wq, condition)
