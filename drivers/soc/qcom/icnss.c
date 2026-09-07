@@ -4025,6 +4025,10 @@ static int icnss_pm_suspend_noirq(struct device *dev)
 		goto out;
 
 	ret = priv->ops->suspend_noirq(dev);
+	if (ret == -EAGAIN) {
+		icnss_pr_dbg("WLAN wake received during suspend_noirq, allowing PM core to handle abort\n");
+		ret = 0;
+	}
 
 out:
 	if (ret == 0) {
