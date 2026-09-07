@@ -401,7 +401,7 @@ static int wlan_msg_process(struct ipa_msg_meta *meta, void *buff)
 	uint8_t mac2[IPA_MAC_ADDR_SIZE];
 
 	if (!buff)
-		return -EINVAL;
+		return 0;
 	if (meta->msg_type == WLAN_CLIENT_CONNECT_EX) {
 		/* debug print */
 		event_ex_cur_con = buff;

@@ -8630,7 +8630,7 @@ static QDF_STATUS hdd_abort_sched_scan_all_adapters(struct hdd_context *hdd_ctx)
 		    adapter->device_mode == QDF_P2P_GO_MODE) {
 			err = wlan_hdd_sched_scan_stop(adapter->dev);
 			if (err)
-				hdd_err("Unable to stop scheduled scan");
+				hdd_debug("Unable to stop scheduled scan: %d", err);
 		}
 		hdd_adapter_dev_put_debug(adapter, dbgid);
 	}

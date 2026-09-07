@@ -1179,12 +1179,12 @@ static int __ipa_wwan_close(struct net_device *dev)
 		 */
 		reinit_completion(&wwan_ptr->resource_granted_completion);
 		rc = ipa3_deregister_intf(dev->name);
-		if (rc) {
+		if (rc && rc != -EINVAL) {
 			IPAWANERR("[%s]: ipa3_deregister_intf failed %d\n",
 			       dev->name, rc);
 			return rc;
 		}
-		return rc;
+		return 0;
 	} else {
 		return -EBADF;
 	}

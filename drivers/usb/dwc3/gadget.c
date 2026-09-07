@@ -1689,7 +1689,7 @@ static int dwc3_gadget_ep_dequeue(struct usb_ep *ep,
 	int				ret = 0;
 
 	if (atomic_read(&dwc->in_lpm)) {
-		dev_err(dwc->dev, "Unable to dequeue while in LPM\n");
+		dev_dbg(dwc->dev, "Unable to dequeue while in LPM\n");
 		return -EAGAIN;
 	}
 

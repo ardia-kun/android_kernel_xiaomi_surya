@@ -2052,8 +2052,8 @@ int wmi_unified_unregister_event_handler(wmi_unified_t wmi_handle,
 	struct wmi_soc *soc;
 
 	if (!wmi_handle) {
-		WMI_LOGE("WMI handle is NULL");
-		return QDF_STATUS_E_FAILURE;
+		WMI_LOGD("WMI handle is NULL");
+		return QDF_STATUS_SUCCESS;
 	}
 
 	soc = wmi_handle->soc;

@@ -682,8 +682,11 @@ QDF_STATUS qdf_mutex_destroy(qdf_mutex_t *lock)
 		return QDF_STATUS_E_FAULT;
 	}
 
+	if (lock->cookie == 0 || lock->state == LOCK_DESTROYED)
+		return QDF_STATUS_SUCCESS;
+
 	if (LINUX_LOCK_COOKIE != lock->cookie) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_DEBUG,
 			  "%s: uninitialized lock", __func__);
 		return QDF_STATUS_E_INVAL;
 	}

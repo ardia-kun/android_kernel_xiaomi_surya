@@ -3451,7 +3451,7 @@ int smblib_dp_dm_bq(struct smb_charger *chg, int val)
 	/* if raise_vbus work is running, ignore dp_dm pulses */
 	if (chg->raise_vbus_to_detect)
 		return rc;
-	smblib_err(chg, "smblib_dp_dm val=%d\n", val);
+	smblib_dbg(chg, PR_MISC, "smblib_dp_dm val=%d\n", val);
 	switch (val) {
 	case POWER_SUPPLY_DP_DM_DP_PULSE:
 		/*
@@ -6211,9 +6211,10 @@ static int check_reduce_fcc_condition(struct smb_charger *chg)
 
 	if (!chg->cp_psy) {
 		chg->cp_psy = power_supply_get_by_name("bq2597x-standalone");
-		if (!chg->cp_psy)
+		if (!chg->cp_psy) {
 			pr_err("cp_psy not found\n");
 			return 0;
+		}
 	}
 
 	rc = power_supply_get_property(chg->cp_psy,
@@ -6254,7 +6255,7 @@ static int check_reduce_fcc_condition(struct smb_charger *chg)
 		(chg->charge_type != POWER_SUPPLY_CHARGE_TYPE_FAST) ||
 		(chg->batt_health != POWER_SUPPLY_HEALTH_GOOD))
 	{
-		pr_err("%s: cp_charge_enabled(%d), charge_status(%d), charge_type(%d), batt_health(%d)\n",
+		smblib_dbg(chg, PR_MISC, "%s: cp_charge_enabled(%d), charge_status(%d), charge_type(%d), batt_health(%d)\n",
 					__FUNCTION__, chg->cp_charge_enabled, chg->charge_status, chg->charge_type, chg->batt_health);
 		return 0;
 	}
@@ -8445,7 +8446,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 			&& capacity > TAPER_BATT_CAPACITY_THR) {
 		fcc_ua = get_effective_result(chg->fcc_votable)
 							- TAPER_DECREASE_FCC_UA;
-		pr_err("taper from main charger, reducing FCC to %duA\n",
+		smblib_dbg(chg, PR_MISC, "taper from main charger, reducing FCC to %duA\n",
 				fcc_ua);
 
 		if (fcc_ua < MIN_TAPER_FCC_THR_UA)

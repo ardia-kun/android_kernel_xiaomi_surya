@@ -638,32 +638,18 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 		return;
 
 	root = debugfs_create_dir(mmc_card_id(card), host->debugfs_root);
-	if (IS_ERR(root))
-		/* Don't complain -- debugfs just isn't enabled */
+	if (IS_ERR_OR_NULL(root))
 		return;
-	if (!root)
-		/* Complain -- debugfs is enabled, but it failed to
-		 * create the directory. */
-		goto err;
 
 	card->debugfs_root = root;
 
-	if (!debugfs_create_x32("state", 0400, root, &card->state))
-		goto err;
+	debugfs_create_x32("state", 0400, root, &card->state);
 
 	if (mmc_card_mmc(card) && (card->ext_csd.rev >= 5) &&
 	    (mmc_card_configured_auto_bkops(card) ||
 	     mmc_card_configured_manual_bkops(card)))
-		if (!debugfs_create_file("bkops_stats", 0400, root, card,
-					 &mmc_dbg_bkops_stats_fops))
-			goto err;
-
-	return;
-
-err:
-	debugfs_remove_recursive(root);
-	card->debugfs_root = NULL;
-	dev_err(&card->dev, "failed to initialize debugfs\n");
+		debugfs_create_file("bkops_stats", 0400, root, card,
+				    &mmc_dbg_bkops_stats_fops);
 }
 
 void mmc_remove_card_debugfs(struct mmc_card *card)

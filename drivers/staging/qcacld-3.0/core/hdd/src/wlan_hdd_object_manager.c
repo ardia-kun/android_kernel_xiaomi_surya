@@ -106,8 +106,6 @@ int hdd_objmgr_release_and_destroy_psoc(struct hdd_context *hdd_ctx)
 	if (!psoc)
 		return -EINVAL;
 
-	wlan_objmgr_print_ref_all_objects_per_psoc(psoc);
-
 	status = wlan_objmgr_psoc_obj_delete(psoc);
 	wlan_objmgr_psoc_release_ref(psoc, WLAN_HDD_ID_OBJ_MGR);
 
