@@ -810,9 +810,49 @@ static struct kobj_attribute mic_gain_attribute =
 		mic_gain_show,
 		mic_gain_store);
 
+static int high_perf_mode = 1;
+
+static ssize_t high_perf_mode_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", high_perf_mode);
+}
+
+static ssize_t high_perf_mode_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int input;
+
+	if (sscanf(buf, "%d", &input) != 1)
+		return -EINVAL;
+
+	high_perf_mode = !!input;
+	if (sound_control_codec_ptr) {
+		if (high_perf_mode) {
+			snd_soc_update_bits(sound_control_codec_ptr,
+				BOLERO_CDC_RX_RX0_RX_PATH_DSM_CTL, 0x01, 0x01);
+			snd_soc_update_bits(sound_control_codec_ptr,
+				BOLERO_CDC_RX_RX1_RX_PATH_DSM_CTL, 0x01, 0x01);
+		} else {
+			snd_soc_update_bits(sound_control_codec_ptr,
+				BOLERO_CDC_RX_RX0_RX_PATH_DSM_CTL, 0x01, 0x00);
+			snd_soc_update_bits(sound_control_codec_ptr,
+				BOLERO_CDC_RX_RX1_RX_PATH_DSM_CTL, 0x01, 0x00);
+		}
+	}
+
+	return count;
+}
+
+static struct kobj_attribute high_perf_mode_attribute =
+	__ATTR(high_perf_mode, 0664,
+		high_perf_mode_show,
+		high_perf_mode_store);
+
 static struct attribute *sound_control_attrs[] = {
 		&headphone_gain_attribute.attr,
 		&mic_gain_attribute.attr,
+		&high_perf_mode_attribute.attr,
 		NULL,
 };
 
@@ -878,6 +918,12 @@ static int bolero_soc_codec_probe(struct snd_soc_codec *codec)
 		dev_warn(codec->dev, "%s: sound_control init failed: %d\n",
 			 __func__, ret);
 		ret = 0;
+	}
+	if (high_perf_mode) {
+		snd_soc_update_bits(codec,
+			BOLERO_CDC_RX_RX0_RX_PATH_DSM_CTL, 0x01, 0x01);
+		snd_soc_update_bits(codec,
+			BOLERO_CDC_RX_RX1_RX_PATH_DSM_CTL, 0x01, 0x01);
 	}
 #endif
 	priv->codec = codec;
