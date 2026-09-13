@@ -181,7 +181,9 @@ jobs:
           IMAGE_PATH="out/arch/arm64/boot/Image"
           if [ ! -f "$IMAGE_PATH" ]; then
             echo "::error::Kernel Image not found at $IMAGE_PATH"
-            grep -i "error:" build.log | tail -30
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < <(grep -iE "error:|fatal error:" build.log | tail -25)
             exit 1
           fi
 
