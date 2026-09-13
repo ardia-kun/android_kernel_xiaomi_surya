@@ -38,7 +38,7 @@ env:
   CLANG_DIR: clang
   # AnyKernel3
   ANYKERNEL_REPO: https://github.com/ardia-kun/AnyKernel3
-  ANYKERNEL_BRANCH: main
+  ANYKERNEL_BRANCH: master
 
 jobs:
   build:
