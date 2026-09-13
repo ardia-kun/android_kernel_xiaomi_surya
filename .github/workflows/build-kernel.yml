@@ -1,0 +1,333 @@
+# ==============================================================================
+#  SWORDX-SHISUI KERNEL - GitHub Actions CI
+#  Target: Xiaomi POCO X3 NFC / POCO X3 (surya/karna - SM7150)
+#  Kernel: 4.14.x with KernelSU + SUSFS
+#  Author: ardia-kun
+# ==============================================================================
+
+name: Build Swordx-Shisui Kernel
+
+on:
+  push:
+    branches: [ underclock-undervolt, lineage-22.2 ]
+  pull_request:
+    branches: [ underclock-undervolt, lineage-22.2 ]
+  workflow_dispatch:
+    inputs:
+      make_release:
+        description: 'Create a GitHub Release with the flashable zip'
+        required: false
+        default: 'true'
+        type: boolean
+      kernel_name:
+        description: 'Kernel name suffix (default: Swordx-Shisui)'
+        required: false
+        default: 'Swordx-Shisui'
+        type: string
+
+env:
+  KERNEL_NAME: ${{ github.event.inputs.kernel_name || 'Swordx-Shisui' }}
+  DEVICE_CODENAME: surya
+  DEFCONFIG: surya_defconfig
+  ARCH: arm64
+  KBUILD_BUILD_USER: kiddie
+  KBUILD_BUILD_HOST: github-actions
+  TZ: Asia/Jakarta
+  # Clang toolchain
+  CLANG_URL: https://github.com/kutemeikito/RastaMod69-Clang/releases/download/RastaMod69-Clang-20.0.0-release/RastaMod69-Clang-20.0.0.tar.gz
+  CLANG_DIR: clang
+  # AnyKernel3
+  ANYKERNEL_REPO: https://github.com/ardia-kun/AnyKernel3
+  ANYKERNEL_BRANCH: main
+
+jobs:
+  build:
+    name: "⚔️ Compile Kernel"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # ──────────────────────────────────────────────────────────────────
+      # 1. Checkout source tree
+      # ──────────────────────────────────────────────────────────────────
+      - name: "📥 Checkout kernel source"
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      # ──────────────────────────────────────────────────────────────────
+      # 2. Install dependencies
+      # ──────────────────────────────────────────────────────────────────
+      - name: "📦 Install build dependencies"
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential flex gnupg gperf \
+            libssl-dev libelf-dev libncurses5-dev \
+            zip unzip p7zip-full curl wget \
+            python3 python-is-python3 \
+            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            ccache cpio jq
+
+      # ──────────────────────────────────────────────────────────────────
+      # 3. Setup ccache
+      # ──────────────────────────────────────────────────────────────────
+      - name: "⚡ Setup ccache"
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: kernel-${{ env.DEVICE_CODENAME }}-${{ github.sha }}
+          restore-keys: |
+            kernel-${{ env.DEVICE_CODENAME }}-
+          max-size: 4G
+
+      # ──────────────────────────────────────────────────────────────────
+      # 4. Download & setup Clang toolchain
+      # ──────────────────────────────────────────────────────────────────
+      - name: "🔧 Download RastaMod69 Clang 20.0.0"
+        run: |
+          echo "::group::Downloading Clang toolchain"
+          if [ ! -d "$CLANG_DIR/bin" ]; then
+            wget -q --show-progress "$CLANG_URL" -O clang.tar.gz
+            mkdir -p "$CLANG_DIR"
+            tar -xf clang.tar.gz -C "$CLANG_DIR"
+            rm -f clang.tar.gz
+          fi
+          echo "::endgroup::"
+
+          # Verify clang binary
+          CLANG_BIN="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin/clang"
+          if [ ! -f "$CLANG_BIN" ]; then
+            echo "::error::Clang binary not found at $CLANG_BIN"
+            exit 1
+          fi
+
+          CLANG_VER=$("$CLANG_BIN" --version | head -n 1)
+          echo "✅ Compiler: $CLANG_VER"
+          echo "CLANG_VER=$CLANG_VER" >> "$GITHUB_ENV"
+
+      # ──────────────────────────────────────────────────────────────────
+      # 5. Generate defconfig
+      # ──────────────────────────────────────────────────────────────────
+      - name: "⚙️ Generate kernel defconfig"
+        run: |
+          export PATH="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin:$PATH"
+
+          make O=out -j$(nproc --all) \
+            ARCH=$ARCH \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            LLVM_IAS=1 \
+            $DEFCONFIG
+
+          echo "✅ Defconfig generated successfully"
+
+      # ──────────────────────────────────────────────────────────────────
+      # 6. Compile kernel
+      # ──────────────────────────────────────────────────────────────────
+      - name: "🛠️ Compile kernel (Image + DTBO)"
+        id: compile
+        run: |
+          export PATH="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin:$PATH"
+          BUILD_START=$(date +%s)
+
+          make O=out -j$(nproc --all) \
+            ARCH=$ARCH \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            LLVM_IAS=1 \
+            2>&1 | tee build.log
+
+          BUILD_END=$(date +%s)
+          COMPILE_DURATION=$(( BUILD_END - BUILD_START ))
+          COMPILE_MINUTES=$(( COMPILE_DURATION / 60 ))
+          COMPILE_SECONDS=$(( COMPILE_DURATION % 60 ))
+
+          # Verify kernel image was built
+          IMAGE_PATH="out/arch/arm64/boot/Image"
+          if [ ! -f "$IMAGE_PATH" ]; then
+            echo "::error::Kernel Image not found at $IMAGE_PATH"
+            grep -i "error:" build.log | tail -30
+            exit 1
+          fi
+
+          IMAGE_SIZE=$(du -h "$IMAGE_PATH" | awk '{print $1}')
+          WARNING_COUNT=$(grep -ci "warning:" build.log || echo "0")
+
+          echo "✅ Compilation succeeded in ${COMPILE_MINUTES}m ${COMPILE_SECONDS}s"
+          echo "   Image size: $IMAGE_SIZE | Warnings: $WARNING_COUNT"
+
+          # Export for later steps
+          echo "compile_time=${COMPILE_MINUTES}m ${COMPILE_SECONDS}s" >> "$GITHUB_OUTPUT"
+          echo "image_size=$IMAGE_SIZE" >> "$GITHUB_OUTPUT"
+          echo "warning_count=$WARNING_COUNT" >> "$GITHUB_OUTPUT"
+
+      # ──────────────────────────────────────────────────────────────────
+      # 7. Clone AnyKernel3 & package flashable zip
+      # ──────────────────────────────────────────────────────────────────
+      - name: "📦 Package AnyKernel3 flashable zip"
+        id: package
+        run: |
+          BUILD_DATE=$(date +%Y%m%d)
+          ZIP_NAME="${KERNEL_NAME}+KSU-${BUILD_DATE}.zip"
+          IMAGE_PATH="out/arch/arm64/boot/Image"
+
+          # Setup AnyKernel3 directory
+          if [ -d "AnyKernel3" ]; then
+            echo "Using existing AnyKernel3 directory"
+          else
+            git clone --depth=1 -b "$ANYKERNEL_BRANCH" "$ANYKERNEL_REPO" AnyKernel3
+          fi
+
+          # Compress kernel image
+          rm -f AnyKernel3/Image.gz
+          if command -v 7z > /dev/null 2>&1; then
+            7z a -tgzip -mx=9 -mfb=258 -mpass=7 AnyKernel3/Image.gz "$IMAGE_PATH" > /dev/null
+          else
+            gzip -9 -c "$IMAGE_PATH" > AnyKernel3/Image.gz
+          fi
+
+          GZ_SIZE=$(du -h AnyKernel3/Image.gz | awk '{print $1}')
+          echo "✅ Compressed Image.gz: $GZ_SIZE"
+
+          # Create flashable zip
+          cd AnyKernel3
+          rm -f *.zip
+          zip -r9 "$ZIP_NAME" . \
+            -x ".git*" \
+            -x "README.md" \
+            -x "*.zip" > /dev/null
+
+          ZIP_SIZE=$(du -h "$ZIP_NAME" | awk '{print $1}')
+          SHA256=$(sha256sum "$ZIP_NAME" | awk '{print $1}')
+          MD5=$(md5sum "$ZIP_NAME" | awk '{print $1}')
+
+          echo "✅ Package: $ZIP_NAME ($ZIP_SIZE)"
+          echo "   SHA256: $SHA256"
+          echo "   MD5:    $MD5"
+
+          # Export for later steps
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          echo "zip_path=AnyKernel3/$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          echo "zip_size=$ZIP_SIZE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "md5=$MD5" >> "$GITHUB_OUTPUT"
+          echo "build_date=$BUILD_DATE" >> "$GITHUB_OUTPUT"
+
+      # ──────────────────────────────────────────────────────────────────
+      # 8. Upload artifact
+      # ──────────────────────────────────────────────────────────────────
+      - name: "☁️ Upload kernel artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.zip_name }}
+          path: ${{ steps.package.outputs.zip_path }}
+          retention-days: 30
+          if-no-files-found: error
+
+      # ──────────────────────────────────────────────────────────────────
+      # 9. Upload build log (on failure)
+      # ──────────────────────────────────────────────────────────────────
+      - name: "📋 Upload build log (on failure)"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
+
+      # ──────────────────────────────────────────────────────────────────
+      # 10. Create GitHub Release
+      # ──────────────────────────────────────────────────────────────────
+      - name: "🚀 Create GitHub Release"
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.make_release == 'true')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.package.outputs.build_date }}-${{ github.run_number }}
+          name: "⚔️ ${{ env.KERNEL_NAME }} | ${{ steps.package.outputs.build_date }}"
+          body: |
+            ## ⚔️ ${{ env.KERNEL_NAME }} Kernel Release
+
+            **Device:** Xiaomi POCO X3 NFC / POCO X3 (`surya` / `karna`)
+            **SoC:** Qualcomm Snapdragon 732G (SM7150)
+            **Kernel Version:** 4.14.355-Swordx
+            **Android:** 11-16
+
+            ### 📋 Build Info
+            | Key | Value |
+            |---|---|
+            | Compiler | `${{ env.CLANG_VER }}` |
+            | Branch | `${{ github.ref_name }}` |
+            | Commit | [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
+            | Compile Time | ${{ steps.compile.outputs.compile_time }} |
+            | Warnings | ${{ steps.compile.outputs.warning_count }} |
+
+            ### 📦 Package Info
+            | Key | Value |
+            |---|---|
+            | Filename | `${{ steps.package.outputs.zip_name }}` |
+            | Size | ${{ steps.package.outputs.zip_size }} |
+            | SHA256 | `${{ steps.package.outputs.sha256 }}` |
+            | MD5 | `${{ steps.package.outputs.md5 }}` |
+
+            ### 🔧 Features
+            - ⚡ BORE Scheduler 5.1.0
+            - 🔋 CPU Underclock & Undervolt
+            - 🎮 GPU Tuning (267-825MHz)
+            - 🧊 Custom step-wise thermal policy
+            - 🗜️ Advanced zswap/zram/zsmalloc
+            - 🔐 KernelSU + SUSFS
+            - 🛡️ Boeffla Wakelock Blocker v1.1.0
+
+            ### ⚡ Flash via Recovery
+            ```
+            1. Boot into custom recovery (TWRP/OrangeFox)
+            2. Flash the zip file
+            3. Reboot
+            ```
+
+            ---
+            _Built with ❤️ by GitHub Actions_
+          files: ${{ steps.package.outputs.zip_path }}
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+
+      # ──────────────────────────────────────────────────────────────────
+      # 11. Build summary
+      # ──────────────────────────────────────────────────────────────────
+      - name: "📊 Build Summary"
+        if: always()
+        run: |
+          echo "## ⚔️ Swordx-Shisui Kernel Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ${{ job.status == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Device** | POCO X3 NFC / POCO X3 (\`surya\`) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Compiler** | \`${{ env.CLANG_VER }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "| **Compile Time** | ${{ steps.compile.outputs.compile_time }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Image Size** | ${{ steps.compile.outputs.image_size }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Warnings** | ${{ steps.compile.outputs.warning_count }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Package** | \`${{ steps.package.outputs.zip_name }}\` (${{ steps.package.outputs.zip_size }}) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **SHA256** | \`${{ steps.package.outputs.sha256 }}\` |" >> $GITHUB_STEP_SUMMARY
+          fi
