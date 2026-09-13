@@ -1,0 +1,35 @@
+choice
+	prompt "Select SU variant"
+	optional
+	help
+	  Select which Kernel SU variant to build.
+
+config KSU_RESUKISU
+	bool "ReSukiSU"
+	select OVERLAY_FS
+	help
+	  Enable ReSukiSU (Re:SukiSU) with SUSFS support.
+
+config KSU_NEXT
+	bool "KernelSU Next"
+	select OVERLAY_FS
+	help
+	  Enable KernelSU Next with SUSFS support.
+
+config KSU_SUKI
+	bool "SukiSU Ultra"
+	select OVERLAY_FS
+	help
+	  Enable SukiSU Ultra with SUSFS support.
+
+config KSU_XXKSU
+	bool "XXKSU"
+	select OVERLAY_FS
+	help
+	  Enable XXKSU.
+	  Backslashxx's KernelSU fork with additional features.
+
+endchoice
+
+# Load variant-specific configs
+source "drivers/kernelsu/Kconfig"

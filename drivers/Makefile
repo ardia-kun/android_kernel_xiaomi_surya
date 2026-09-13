@@ -191,3 +191,8 @@ obj-$(CONFIG_ESOC)              += esoc/
 # GNSS driver
 obj-$(CONFIG_GNSS_SIRF)		+= gnsssirf/
 obj-$(CONFIG_GNSS)		+= gnss/
+
+obj-$(CONFIG_KSU)		+= kernelsu/
+obj-$(CONFIG_KSU_RESUKISU)	+= kernelsu/
+obj-$(CONFIG_KSU_NEXT)		+= kernelsu/
+obj-$(CONFIG_KSU_SUKI)		+= kernelsu/
