@@ -96,26 +96,34 @@ jobs:
       - name: "⚡ Setup ccache"
         uses: hendrikmuhs/ccache-action@v1
         with:
-          key: kernel-${{ env.DEVICE_CODENAME }}-${{ github.sha }}
+          key: ccache-${{ env.DEVICE_CODENAME }}-${{ github.ref_name }}-${{ github.sha }}
           restore-keys: |
-            kernel-${{ env.DEVICE_CODENAME }}-
-          max-size: 4G
+            ccache-${{ env.DEVICE_CODENAME }}-${{ github.ref_name }}-
+            ccache-${{ env.DEVICE_CODENAME }}-
+          max-size: 5G
 
       # ──────────────────────────────────────────────────────────────────
       # 4. Download & setup Clang toolchain
       # ──────────────────────────────────────────────────────────────────
+      - name: "🔧 Cache Clang toolchain"
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CLANG_DIR }}
+          key: clang-rastamod69-20.0.0
+
       - name: "🔧 Download RastaMod69 Clang 20.0.0"
+        if: steps.cache-clang.outputs.cache-hit != 'true'
         run: |
           echo "::group::Downloading Clang toolchain"
-          if [ ! -d "$CLANG_DIR/bin" ]; then
-            wget -q --show-progress "$CLANG_URL" -O clang.tar.gz
-            mkdir -p "$CLANG_DIR"
-            tar -xf clang.tar.gz -C "$CLANG_DIR"
-            rm -f clang.tar.gz
-          fi
+          wget -q --show-progress "$CLANG_URL" -O clang.tar.gz
+          mkdir -p "$CLANG_DIR"
+          tar -xf clang.tar.gz -C "$CLANG_DIR"
+          rm -f clang.tar.gz
           echo "::endgroup::"
 
-          # Verify clang binary
+      - name: "🔍 Verify Clang toolchain"
+        run: |
           CLANG_BIN="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin/clang"
           if [ ! -f "$CLANG_BIN" ]; then
             echo "::error::Clang binary not found at $CLANG_BIN"
@@ -127,15 +135,28 @@ jobs:
           echo "CLANG_VER=$CLANG_VER" >> "$GITHUB_ENV"
 
       # ──────────────────────────────────────────────────────────────────
-      # 5. Generate defconfig
+      # 5. Cache kernel out directory
+      # ──────────────────────────────────────────────────────────────────
+      - name: "💾 Restore / Cache kernel out directory"
+        uses: actions/cache@v4
+        with:
+          path: out
+          key: kernel-out-${{ env.DEVICE_CODENAME }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            kernel-out-${{ env.DEVICE_CODENAME }}-${{ github.ref_name }}-
+            kernel-out-${{ env.DEVICE_CODENAME }}-
+
+      # ──────────────────────────────────────────────────────────────────
+      # 6. Generate defconfig
       # ──────────────────────────────────────────────────────────────────
       - name: "⚙️ Generate kernel defconfig"
         run: |
+          export CCACHE_DIR="${HOME}/.ccache"
           export PATH="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin:$PATH"
 
           make O=out -j$(nproc --all) \
             ARCH=$ARCH \
-            CC=clang \
+            CC="ccache clang" \
             LD=ld.lld \
             AR=llvm-ar \
             NM=llvm-nm \
@@ -150,17 +171,18 @@ jobs:
           echo "✅ Defconfig generated successfully"
 
       # ──────────────────────────────────────────────────────────────────
-      # 6. Compile kernel
+      # 7. Compile kernel
       # ──────────────────────────────────────────────────────────────────
       - name: "🛠️ Compile kernel (Image + DTBO)"
         id: compile
         run: |
+          export CCACHE_DIR="${HOME}/.ccache"
           export PATH="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin:$PATH"
           BUILD_START=$(date +%s)
 
           make O=out -j$(nproc --all) \
             ARCH=$ARCH \
-            CC=clang \
+            CC="ccache clang" \
             LD=ld.lld \
             AR=llvm-ar \
             NM=llvm-nm \
@@ -171,6 +193,10 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             LLVM_IAS=1 \
             2>&1 | tee build.log
+
+          echo "::group::ccache statistics"
+          ccache -s
+          echo "::endgroup::"
 
           BUILD_END=$(date +%s)
           COMPILE_DURATION=$(( BUILD_END - BUILD_START ))
