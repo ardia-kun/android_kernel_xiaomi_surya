@@ -184,6 +184,21 @@ int __weak arch_asym_cpu_priority(int cpu)
 unsigned int sysctl_sched_cfs_bandwidth_slice		= 5000UL;
 #endif
 
+#ifdef CONFIG_SCHED_EEVDF
+/*
+ * EEVDF base time slice (in nanoseconds).
+ *
+ * Tasks get a virtual deadline computed as:
+ *   deadline = eligible_time + calc_delta_fair(slice, se)
+ *
+ * Shorter slices = better latency for interactive tasks.
+ * Longer slices = better throughput for CPU-bound tasks.
+ *
+ * (default: 3ms, units: nanoseconds)
+ */
+unsigned int sysctl_sched_base_slice			= 3000000UL;
+#endif
+
 /*
  * The margin used when comparing utilization with CPU capacity:
  * util * margin < capacity * 1024
@@ -588,6 +603,68 @@ static inline int entity_before(struct sched_entity *a,
 	return (s64)(a->vruntime - b->vruntime) < 0;
 }
 
+#ifdef CONFIG_SCHED_EEVDF
+/*
+ * EEVDF helper: compare entities by virtual deadline.
+ * Returns true if 'a' has an earlier deadline than 'b'.
+ */
+static inline int entity_deadline_before(struct sched_entity *a,
+					 struct sched_entity *b)
+{
+	return (s64)(a->deadline - b->deadline) < 0;
+}
+
+/*
+ * EEVDF eligibility check.
+ *
+ * An entity is "eligible" if it has not consumed more than its fair
+ * share of CPU time. In EEVDF terms, this means lag >= 0, which we
+ * approximate by checking if the entity's vruntime is at or behind
+ * the cfs_rq's min_vruntime (the minimum fair share baseline).
+ *
+ * We allow a small tolerance (half the base slice in virtual time)
+ * so slightly ahead entities are still considered eligible, avoiding
+ * starvation edge cases.
+ */
+static inline int entity_eligible(struct cfs_rq *cfs_rq,
+				  struct sched_entity *se)
+{
+	s64 vlag = (s64)(cfs_rq->min_vruntime - se->vruntime);
+
+	/*
+	 * Entity is eligible if its vruntime <= min_vruntime,
+	 * or within a small tolerance (half the vslice).
+	 */
+	return vlag >= -(s64)calc_delta_fair(sysctl_sched_base_slice >> 1, se);
+}
+
+/*
+ * Update the virtual deadline of a scheduling entity.
+ *
+ * deadline = vruntime + calc_delta_fair(slice, se)
+ *
+ * The virtual deadline represents when this entity's current time
+ * slice expires in virtual time. Tasks with shorter slices get
+ * earlier deadlines and thus are prioritized when eligible,
+ * improving their latency.
+ */
+static void update_entity_deadline(struct cfs_rq *cfs_rq,
+				   struct sched_entity *se)
+{
+	se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
+}
+
+/*
+ * Initialize EEVDF fields for a new or waking entity.
+ */
+static void init_entity_eevdf(struct sched_entity *se)
+{
+	se->slice = sysctl_sched_base_slice;
+	se->deadline = se->vruntime;
+	se->min_deadline = se->deadline;
+}
+#endif /* CONFIG_SCHED_EEVDF */
+
 static void update_min_vruntime(struct cfs_rq *cfs_rq)
 {
 	struct sched_entity *curr = cfs_rq->curr;
@@ -923,6 +1000,18 @@ static void update_curr(struct cfs_rq *cfs_rq)
 
 	curr->vruntime += calc_delta_fair(delta_exec, curr);
 	update_min_vruntime(cfs_rq);
+
+#ifdef CONFIG_SCHED_EEVDF
+	/*
+	 * EEVDF: Update the entity's virtual deadline if its vruntime
+	 * has passed the current deadline (i.e., the current slice is
+	 * exhausted in virtual time). The new deadline is set one
+	 * slice ahead.
+	 */
+	if (sched_feat(EEVDF) &&
+	    (s64)(curr->vruntime - curr->deadline) >= 0)
+		update_entity_deadline(cfs_rq, curr);
+#endif
 
 	if (entity_is_task(curr)) {
 		struct task_struct *curtask = task_of(curr);
@@ -3988,6 +4077,26 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 		se->vruntime = vruntime;
 	else
 		se->vruntime = max_vruntime(se->vruntime, vruntime);
+
+#ifdef CONFIG_SCHED_EEVDF
+	/*
+	 * EEVDF: Initialize deadline for placed entities.
+	 *
+	 * For newly created tasks (initial), set the slice and compute
+	 * deadline from scratch.
+	 *
+	 * For waking tasks, keep the existing deadline if it's still
+	 * ahead of vruntime (the entity hasn't used up its slice yet).
+	 * Otherwise, recompute the deadline.
+	 */
+	if (sched_feat(EEVDF)) {
+		if (!se->slice)
+			se->slice = sysctl_sched_base_slice;
+
+		if (initial || (s64)(se->vruntime - se->deadline) >= 0)
+			update_entity_deadline(cfs_rq, se);
+	}
+#endif
 }
 
 static void check_enqueue_throttle(struct cfs_rq *cfs_rq);
@@ -4208,6 +4317,21 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	struct sched_entity *se;
 	s64 delta;
 
+#ifdef CONFIG_SCHED_EEVDF
+	/*
+	 * EEVDF: If the current entity's vruntime has passed its virtual
+	 * deadline, its time slice is exhausted and it should be preempted.
+	 * This allows shorter-slice tasks to be scheduled sooner.
+	 */
+	if (sched_feat(EEVDF)) {
+		if ((s64)(curr->vruntime - curr->deadline) >= 0) {
+			resched_curr(rq_of(cfs_rq));
+			clear_buddies(cfs_rq, curr);
+			return;
+		}
+	}
+#endif
+
 	ideal_runtime = sched_slice(cfs_rq, curr);
 	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime;
 	if (delta_exec > ideal_runtime) {
@@ -4279,12 +4403,87 @@ wakeup_preempt_entity(struct sched_entity *curr, struct sched_entity *se);
  * 2) pick the "next" process, since someone really wants that to run
  * 3) pick the "last" process, for cache locality
  * 4) do not run the "skip" process, if something else is available
+ *
+ * With EEVDF enabled, we pick the eligible entity with the earliest
+ * virtual deadline instead of simply the leftmost vruntime.
  */
+
+#ifdef CONFIG_SCHED_EEVDF
+/*
+ * EEVDF pick: among eligible entities, find the one with the
+ * earliest virtual deadline. We walk up to EEVDF_MAX_CANDIDATES
+ * entities from the leftmost node to keep this O(k) bounded.
+ *
+ * This is a simplified version of the full EEVDF algorithm that
+ * avoids requiring an augmented rb-tree (min_deadline propagation).
+ */
+#define EEVDF_MAX_CANDIDATES 8
+
+static struct sched_entity *
+__pick_eevdf(struct cfs_rq *cfs_rq, struct sched_entity *curr)
+{
+	struct rb_node *node;
+	struct sched_entity *se, *best = NULL;
+	int count = 0;
+
+	/*
+	 * Consider curr as a candidate if it's eligible
+	 */
+	if (curr && curr->on_rq && entity_eligible(cfs_rq, curr)) {
+		best = curr;
+	}
+
+	/*
+	 * Walk from leftmost (smallest vruntime) and check candidates.
+	 * Entities near the leftmost tend to be most eligible since
+	 * they have the smallest vruntimes.
+	 */
+	node = rb_first_cached(&cfs_rq->tasks_timeline);
+	while (node && count < EEVDF_MAX_CANDIDATES) {
+		se = rb_entry(node, struct sched_entity, run_node);
+
+		/*
+		 * Once we pass entities that are clearly not eligible,
+		 * no point walking further right (higher vruntime).
+		 */
+		if (!entity_eligible(cfs_rq, se))
+			break;
+
+		/*
+		 * Among eligible entities, pick earliest deadline.
+		 */
+		if (!best || entity_deadline_before(se, best))
+			best = se;
+
+		node = rb_next(node);
+		count++;
+	}
+
+	return best;
+}
+#endif /* CONFIG_SCHED_EEVDF */
+
 static struct sched_entity *
 pick_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 {
 	struct sched_entity *left = __pick_first_entity(cfs_rq);
 	struct sched_entity *se;
+
+#ifdef CONFIG_SCHED_EEVDF
+	/*
+	 * EEVDF path: pick eligible entity with earliest deadline.
+	 * Falls back to CFS leftmost if EEVDF feature is disabled
+	 * at runtime or if no eligible entity is found.
+	 */
+	if (sched_feat(EEVDF)) {
+		se = __pick_eevdf(cfs_rq, curr);
+		if (se) {
+			clear_buddies(cfs_rq, se);
+			return se;
+		}
+		/* Fall through to original CFS logic if no candidate */
+	}
+#endif
 
 	/*
 	 * If curr is set we have to see if its left of the leftmost entity
@@ -8703,6 +8902,27 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	find_matching_se(&se, &pse);
 	update_curr(cfs_rq_of(se));
 	BUG_ON(!pse);
+
+#ifdef CONFIG_SCHED_EEVDF
+	/*
+	 * EEVDF wakeup preemption: if the waking entity is eligible
+	 * and has an earlier virtual deadline than current, preempt.
+	 *
+	 * This is the core EEVDF advantage: tasks with shorter slices
+	 * get earlier deadlines and thus preempt longer-running tasks,
+	 * giving better latency to interactive workloads.
+	 */
+	if (sched_feat(EEVDF) && sched_feat(WAKEUP_PREEMPTION)) {
+		if (entity_eligible(cfs_rq_of(pse), pse) &&
+		    entity_deadline_before(pse, se)) {
+			if (!next_buddy_marked)
+				set_next_buddy(pse);
+			goto preempt;
+		}
+		return;
+	}
+#endif
+
 	if (wakeup_preempt_entity(se, pse) == 1) {
 		/*
 		 * Bias pick_next to pick the sched entity that is

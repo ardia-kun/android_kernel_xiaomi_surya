@@ -1081,6 +1081,28 @@ config SCHED_TUNE
 
 	  If unsure, say N.
 
+config SCHED_EEVDF
+	bool "EEVDF-inspired fair scheduler improvements"
+	default y
+	help
+	  This option enables Earliest Eligible Virtual Deadline First
+	  (EEVDF) inspired improvements to the CFS fair scheduler.
+
+	  When enabled, the scheduler uses virtual deadline and eligibility
+	  concepts from the EEVDF algorithm (as implemented in upstream
+	  Linux 6.6+) to improve latency for interactive and latency-
+	  sensitive tasks, while maintaining CFS fairness guarantees.
+
+	  Key improvements:
+	  - Virtual deadline-based task selection among eligible tasks
+	  - Configurable per-task time slices via sched_base_slice
+	  - Better responsiveness for short-running interactive tasks
+
+	  This is a lightweight adaptation suitable for older kernels
+	  that preserves compatibility with existing CFS infrastructure.
+
+	  If unsure, say Y.
+
 config DEFAULT_USE_ENERGY_AWARE
 	bool "Default to enabling the Energy Aware Scheduler feature"
 	default n

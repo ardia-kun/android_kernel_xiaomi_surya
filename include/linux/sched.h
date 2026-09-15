@@ -509,6 +509,12 @@ struct sched_entity {
 	u64				vruntime;
 	u64				prev_sum_exec_runtime;
 
+#ifdef CONFIG_SCHED_EEVDF
+	u64				deadline;
+	u64				min_deadline;
+	u64				slice;
+#endif
+
 	u64				nr_migrations;
 
 	struct sched_statistics		statistics;

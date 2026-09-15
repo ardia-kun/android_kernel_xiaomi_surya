@@ -92,6 +92,15 @@ SCHED_FEAT(WA_BIAS, true)
 SCHED_FEAT(UTIL_EST, true)
 
 /*
+ * EEVDF-inspired task selection: pick eligible task with earliest
+ * virtual deadline instead of leftmost vruntime. Improves latency
+ * for interactive tasks.
+ */
+#ifdef CONFIG_SCHED_EEVDF
+SCHED_FEAT(EEVDF, true)
+#endif
+
+/*
  * Energy aware scheduling. Use platform energy model to guide scheduling
  * decisions optimizing for energy efficiency.
  */
