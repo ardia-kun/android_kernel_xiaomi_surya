@@ -603,68 +603,6 @@ static inline int entity_before(struct sched_entity *a,
 	return (s64)(a->vruntime - b->vruntime) < 0;
 }
 
-#ifdef CONFIG_SCHED_EEVDF
-/*
- * EEVDF helper: compare entities by virtual deadline.
- * Returns true if 'a' has an earlier deadline than 'b'.
- */
-static inline int entity_deadline_before(struct sched_entity *a,
-					 struct sched_entity *b)
-{
-	return (s64)(a->deadline - b->deadline) < 0;
-}
-
-/*
- * EEVDF eligibility check.
- *
- * An entity is "eligible" if it has not consumed more than its fair
- * share of CPU time. In EEVDF terms, this means lag >= 0, which we
- * approximate by checking if the entity's vruntime is at or behind
- * the cfs_rq's min_vruntime (the minimum fair share baseline).
- *
- * We allow a small tolerance (half the base slice in virtual time)
- * so slightly ahead entities are still considered eligible, avoiding
- * starvation edge cases.
- */
-static inline int entity_eligible(struct cfs_rq *cfs_rq,
-				  struct sched_entity *se)
-{
-	s64 vlag = (s64)(cfs_rq->min_vruntime - se->vruntime);
-
-	/*
-	 * Entity is eligible if its vruntime <= min_vruntime,
-	 * or within a small tolerance (half the vslice).
-	 */
-	return vlag >= -(s64)calc_delta_fair(sysctl_sched_base_slice >> 1, se);
-}
-
-/*
- * Update the virtual deadline of a scheduling entity.
- *
- * deadline = vruntime + calc_delta_fair(slice, se)
- *
- * The virtual deadline represents when this entity's current time
- * slice expires in virtual time. Tasks with shorter slices get
- * earlier deadlines and thus are prioritized when eligible,
- * improving their latency.
- */
-static void update_entity_deadline(struct cfs_rq *cfs_rq,
-				   struct sched_entity *se)
-{
-	se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
-}
-
-/*
- * Initialize EEVDF fields for a new or waking entity.
- */
-static void init_entity_eevdf(struct sched_entity *se)
-{
-	se->slice = sysctl_sched_base_slice;
-	se->deadline = se->vruntime;
-	se->min_deadline = se->deadline;
-}
-#endif /* CONFIG_SCHED_EEVDF */
-
 static void update_min_vruntime(struct cfs_rq *cfs_rq)
 {
 	struct sched_entity *curr = cfs_rq->curr;
@@ -857,6 +795,68 @@ static u64 sched_vslice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
 	return calc_delta_fair(sched_slice(cfs_rq, se), se);
 }
+
+#ifdef CONFIG_SCHED_EEVDF
+/*
+ * EEVDF helper: compare entities by virtual deadline.
+ * Returns true if 'a' has an earlier deadline than 'b'.
+ */
+static inline int entity_deadline_before(struct sched_entity *a,
+					 struct sched_entity *b)
+{
+	return (s64)(a->deadline - b->deadline) < 0;
+}
+
+/*
+ * EEVDF eligibility check.
+ *
+ * An entity is "eligible" if it has not consumed more than its fair
+ * share of CPU time. In EEVDF terms, this means lag >= 0, which we
+ * approximate by checking if the entity's vruntime is at or behind
+ * the cfs_rq's min_vruntime (the minimum fair share baseline).
+ *
+ * We allow a small tolerance (half the base slice in virtual time)
+ * so slightly ahead entities are still considered eligible, avoiding
+ * starvation edge cases.
+ */
+static inline int entity_eligible(struct cfs_rq *cfs_rq,
+				  struct sched_entity *se)
+{
+	s64 vlag = (s64)(cfs_rq->min_vruntime - se->vruntime);
+
+	/*
+	 * Entity is eligible if its vruntime <= min_vruntime,
+	 * or within a small tolerance (half the vslice).
+	 */
+	return vlag >= -(s64)calc_delta_fair(sysctl_sched_base_slice >> 1, se);
+}
+
+/*
+ * Update the virtual deadline of a scheduling entity.
+ *
+ * deadline = vruntime + calc_delta_fair(slice, se)
+ *
+ * The virtual deadline represents when this entity's current time
+ * slice expires in virtual time. Tasks with shorter slices get
+ * earlier deadlines and thus are prioritized when eligible,
+ * improving their latency.
+ */
+static inline void update_entity_deadline(struct cfs_rq *cfs_rq,
+					  struct sched_entity *se)
+{
+	se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
+}
+
+/*
+ * Initialize EEVDF fields for a new or waking entity.
+ */
+static inline void init_entity_eevdf(struct sched_entity *se)
+{
+	se->slice = sysctl_sched_base_slice;
+	se->deadline = se->vruntime;
+	se->min_deadline = se->deadline;
+}
+#endif /* CONFIG_SCHED_EEVDF */
 
 #ifdef CONFIG_SMP
 
@@ -4091,7 +4091,7 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 	 */
 	if (sched_feat(EEVDF)) {
 		if (!se->slice)
-			se->slice = sysctl_sched_base_slice;
+			init_entity_eevdf(se);
 
 		if (initial || (s64)(se->vruntime - se->deadline) >= 0)
 			update_entity_deadline(cfs_rq, se);
