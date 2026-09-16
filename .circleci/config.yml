@@ -43,8 +43,14 @@ jobs:
       - run:
           name: "Install build dependencies"
           command: |
+            export DEBIAN_FRONTEND=noninteractive
+            export NEEDRESTART_MODE=l
+            export NEEDRESTART_SUSPEND=1
+            sudo apt-get remove -y needrestart 2>/dev/null || true
             sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends \
+            sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --no-install-recommends \
+              -o Dpkg::Options::="--force-confdef" \
+              -o Dpkg::Options::="--force-confold" \
               bc bison build-essential flex gnupg gperf \
               libssl-dev libelf-dev libncurses5-dev \
               zip unzip p7zip-full curl wget \
