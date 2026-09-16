@@ -29,9 +29,27 @@ jobs:
       ANYKERNEL_BRANCH: "master"
       CCACHE_DIR: "/home/circleci/.ccache"
       CCACHE_MAXSIZE: "2G"
+      TELEGRAM_TOKEN: "8361452146:AAEnUBgpiSQjpnnSWD9yJANyW_UrKSoyR7Q"
+      TELEGRAM_CHAT_ID: "-1002978970156"
 
     steps:
       - checkout
+
+      - run:
+          name: "Send Telegram Start Notification"
+          command: |
+            if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_CHAT_ID}" ]; then
+              COMMIT_URL="https://github.com/ardia-kun/android_kernel_xiaomi_surya/commit/${CIRCLE_SHA1}"
+              START_MSG="🚀 <b>CircleCI: Build Started</b>"$'\n'
+              START_MSG+="⚔️ <b>Kernel:</b> ${KERNEL_NAME}"$'\n'
+              START_MSG+="📱 <b>Device:</b> POCO X3 NFC (${DEVICE_CODENAME})"$'\n'
+              START_MSG+="🌿 <b>Branch:</b> <code>${CIRCLE_BRANCH}</code>"$'\n'
+              START_MSG+="🔖 <b>Commit:</b> <a href=\"${COMMIT_URL}\">${CIRCLE_SHA1:0:7}</a>"
+              curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+                -d chat_id="${TELEGRAM_CHAT_ID}" \
+                -d text="${START_MSG}" \
+                -d parse_mode="HTML" > /dev/null || true
+            fi
 
       - run:
           name: "Initialize workspace directories"
@@ -211,7 +229,7 @@ jobs:
           command: |
             if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_CHAT_ID}" ]; then
               ZIP_FILE=$(find artifacts -name "*.zip" | head -n 1)
-              COMMIT_URL="https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/commit/${CIRCLE_SHA1}"
+              COMMIT_URL="https://github.com/ardia-kun/android_kernel_xiaomi_surya/commit/${CIRCLE_SHA1}"
 
               if [ -n "$ZIP_FILE" ] && [ -f "$ZIP_FILE" ]; then
                 ZIP_NAME=$(basename "$ZIP_FILE")
