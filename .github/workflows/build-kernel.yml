@@ -135,22 +135,11 @@ jobs:
           echo "CLANG_VER=$CLANG_VER" >> "$GITHUB_ENV"
 
       # ──────────────────────────────────────────────────────────────────
-      # 5. Cache kernel out directory
-      # ──────────────────────────────────────────────────────────────────
-      - name: "💾 Restore / Cache kernel out directory"
-        uses: actions/cache@v4
-        with:
-          path: out
-          key: kernel-out-${{ env.DEVICE_CODENAME }}-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            kernel-out-${{ env.DEVICE_CODENAME }}-${{ github.ref_name }}-
-            kernel-out-${{ env.DEVICE_CODENAME }}-
-
-      # ──────────────────────────────────────────────────────────────────
-      # 6. Generate defconfig
+      # 5. Generate defconfig
       # ──────────────────────────────────────────────────────────────────
       - name: "⚙️ Generate kernel defconfig"
         run: |
+          set -eo pipefail
           export CCACHE_DIR="${HOME}/.ccache"
           export PATH="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin:$PATH"
 
@@ -168,18 +157,30 @@ jobs:
             LLVM_IAS=1 \
             $DEFCONFIG
 
+          if [ ! -f "out/.config" ]; then
+            echo "::error::Defconfig generation failed, out/.config not found!"
+            exit 1
+          fi
+
           echo "✅ Defconfig generated successfully"
 
       # ──────────────────────────────────────────────────────────────────
-      # 7. Compile kernel
+      # 6. Compile kernel
       # ──────────────────────────────────────────────────────────────────
       - name: "🛠️ Compile kernel (Image + DTBO)"
         id: compile
         run: |
+          set -o pipefail
           export CCACHE_DIR="${HOME}/.ccache"
           export PATH="${GITHUB_WORKSPACE}/${CLANG_DIR}/bin:$PATH"
           BUILD_START=$(date +%s)
 
+          # Clean old image and log to prevent false positive from cache
+          rm -f out/arch/arm64/boot/Image* out/arch/arm64/boot/dtbo.img
+          rm -f build.log
+
+          # Compile kernel with exit code tracking through tee
+          set +e
           make O=out -j$(nproc --all) \
             ARCH=$ARCH \
             CC="ccache clang" \
@@ -193,10 +194,21 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             LLVM_IAS=1 \
             2>&1 | tee build.log
+          MAKE_EXIT_CODE="${PIPESTATUS[0]}"
+          set -e
 
           echo "::group::ccache statistics"
           ccache -s
           echo "::endgroup::"
+
+          # Fail immediately if make exited with an error code
+          if [ "$MAKE_EXIT_CODE" -ne 0 ]; then
+            echo "::error::Kernel compilation failed with exit code $MAKE_EXIT_CODE"
+            echo "::group::Compilation Errors (tail 30)"
+            grep -iE "error:|fatal error:" build.log | tail -30 || true
+            echo "::endgroup::"
+            exit "$MAKE_EXIT_CODE"
+          fi
 
           BUILD_END=$(date +%s)
           COMPILE_DURATION=$(( BUILD_END - BUILD_START ))
@@ -206,10 +218,10 @@ jobs:
           # Verify kernel image was built
           IMAGE_PATH="out/arch/arm64/boot/Image"
           if [ ! -f "$IMAGE_PATH" ]; then
-            echo "::error::Kernel Image not found at $IMAGE_PATH"
-            while IFS= read -r line; do
-              echo "::error::$line"
-            done < <(grep -iE "error:|fatal error:" build.log | tail -25)
+            echo "::error::Kernel Image not found at $IMAGE_PATH despite exit code 0"
+            echo "::group::Compilation Errors (tail 30)"
+            grep -iE "error:|fatal error:" build.log | tail -30 || true
+            echo "::endgroup::"
             exit 1
           fi
 
