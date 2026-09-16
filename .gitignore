@@ -76,6 +76,8 @@ modules.builtin
 !.gitignore
 !.mailmap
 !.cocciconfig
+!.circleci
+!.circleci/*
 
 #
 # Generated include files

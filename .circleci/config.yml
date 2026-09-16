@@ -1,0 +1,275 @@
+version: 2.1
+
+# ==============================================================================
+#  SWORDX-SHISUI KERNEL - CircleCI Configuration
+#  Target: Xiaomi POCO X3 NFC / POCO X3 (surya/karna - SM7150)
+#  Kernel: 4.14.x with KernelSU + SUSFS
+# ==============================================================================
+
+jobs:
+  build-kernel:
+    machine:
+      image: ubuntu-2204:current
+    # "large" gives 4 vCPUs & 15GB RAM (ideal for kernel compilation).
+    # You can change to "medium" (2 vCPUs, 7.5GB RAM) to consume fewer credits.
+    resource_class: large
+
+    environment:
+      KERNEL_NAME: "Swordx-Shisui"
+      DEVICE_CODENAME: "surya"
+      DEFCONFIG: "surya_defconfig"
+      ARCH: "arm64"
+      SUBARCH: "arm64"
+      KBUILD_BUILD_USER: "kiddie"
+      KBUILD_BUILD_HOST: "circleci"
+      TZ: "Asia/Jakarta"
+      CLANG_URL: "https://github.com/kutemeikito/RastaMod69-Clang/releases/download/RastaMod69-Clang-20.0.0-release/RastaMod69-Clang-20.0.0.tar.gz"
+      CLANG_DIR: "clang"
+      ANYKERNEL_REPO: "https://github.com/ardia-kun/AnyKernel3"
+      ANYKERNEL_BRANCH: "master"
+      CCACHE_DIR: "/home/circleci/.ccache"
+      CCACHE_MAXSIZE: "2G"
+
+    steps:
+      - checkout
+
+      - run:
+          name: "Initialize workspace directories"
+          command: |
+            mkdir -p artifacts
+            mkdir -p "${CCACHE_DIR}"
+            touch build.log
+
+      - run:
+          name: "Install build dependencies"
+          command: |
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends \
+              bc bison build-essential flex gnupg gperf \
+              libssl-dev libelf-dev libncurses5-dev \
+              zip unzip p7zip-full curl wget \
+              python3 python-is-python3 \
+              binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
+              gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+              ccache cpio jq
+
+      - restore_cache:
+          name: "Restore ccache"
+          keys:
+            - ccache-v1-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-{{ .Branch }}-
+            - ccache-v1-
+
+      - restore_cache:
+          name: "Restore Clang toolchain cache"
+          keys:
+            - clang-rastamod69-20.0.0
+
+      - run:
+          name: "Setup Clang toolchain"
+          command: |
+            if [ ! -f "${CLANG_DIR}/bin/clang" ]; then
+              echo "Clang not found in cache. Downloading RastaMod69 Clang..."
+              mkdir -p "${CLANG_DIR}"
+              wget -q --show-progress "${CLANG_URL}" -O clang.tar.gz
+              tar -xf clang.tar.gz -C "${CLANG_DIR}"
+              rm -f clang.tar.gz
+            else
+              echo "Using cached Clang toolchain."
+            fi
+
+            CLANG_BIN="${PWD}/${CLANG_DIR}/bin/clang"
+            if [ ! -f "$CLANG_BIN" ]; then
+              echo "Clang binary not found at $CLANG_BIN!"
+              exit 1
+            fi
+            CLANG_VER=$("$CLANG_BIN" --version | head -n 1)
+            echo "Compiler: ${CLANG_VER}"
+
+      - run:
+          name: "Generate kernel defconfig"
+          command: |
+            set -eo pipefail
+            export CCACHE_DIR="${CCACHE_DIR}"
+            export PATH="${PWD}/${CLANG_DIR}/bin:$PATH"
+            ccache -M "${CCACHE_MAXSIZE}"
+
+            make O=out -j$(nproc --all) \
+              ARCH="${ARCH}" \
+              CC="ccache clang" \
+              LD=ld.lld \
+              AR=llvm-ar \
+              NM=llvm-nm \
+              OBJCOPY=llvm-objcopy \
+              OBJDUMP=llvm-objdump \
+              STRIP=llvm-strip \
+              CROSS_COMPILE=aarch64-linux-gnu- \
+              CLANG_TRIPLE=aarch64-linux-gnu- \
+              LLVM_IAS=1 \
+              "${DEFCONFIG}"
+
+            if [ ! -f "out/.config" ]; then
+              echo "Error: Defconfig generation failed, out/.config not found!"
+              exit 1
+            fi
+            echo "Defconfig generated successfully."
+
+      - run:
+          name: "Compile kernel (Image)"
+          no_output_timeout: 30m
+          command: |
+            set -o pipefail
+            export CCACHE_DIR="${CCACHE_DIR}"
+            export PATH="${PWD}/${CLANG_DIR}/bin:$PATH"
+
+            rm -f out/arch/arm64/boot/Image* out/arch/arm64/boot/dtbo.img
+            rm -f build.log
+
+            START_TIME=$(date +%s)
+            set +e
+            make O=out -j$(nproc --all) \
+              ARCH="${ARCH}" \
+              CC="ccache clang" \
+              LD=ld.lld \
+              AR=llvm-ar \
+              NM=llvm-nm \
+              OBJCOPY=llvm-objcopy \
+              OBJDUMP=llvm-objdump \
+              STRIP=llvm-strip \
+              CROSS_COMPILE=aarch64-linux-gnu- \
+              CLANG_TRIPLE=aarch64-linux-gnu- \
+              LLVM_IAS=1 2>&1 | tee build.log
+            MAKE_EXIT="${PIPESTATUS[0]}"
+            set -e
+
+            echo "=== ccache statistics ==="
+            ccache -s
+
+            if [ "$MAKE_EXIT" -ne 0 ]; then
+              echo "Kernel compilation failed with code: ${MAKE_EXIT}"
+              echo "=== Recent errors ==="
+              grep -iE "error:|fatal error:" build.log | tail -30 || true
+              exit "$MAKE_EXIT"
+            fi
+
+            IMAGE_PATH="out/arch/arm64/boot/Image"
+            if [ ! -f "$IMAGE_PATH" ]; then
+              echo "Kernel Image not found at $IMAGE_PATH!"
+              grep -iE "error:|fatal error:" build.log | tail -30 || true
+              exit 1
+            fi
+
+            END_TIME=$(date +%s)
+            DURATION=$(( END_TIME - START_TIME ))
+            echo "Compilation succeeded in $(( DURATION / 60 ))m $(( DURATION % 60 ))s"
+            echo "Image size: $(du -h "$IMAGE_PATH" | awk '{print $1}')"
+
+      - run:
+          name: "Package AnyKernel3 flashable zip"
+          command: |
+            BUILD_DATE=$(date +%Y%m%d)
+            ZIP_NAME="${KERNEL_NAME}+KSU-${BUILD_DATE}.zip"
+            IMAGE_PATH="out/arch/arm64/boot/Image"
+
+            if [ -d "AnyKernel3" ]; then
+              echo "Using repository AnyKernel3 directory"
+            else
+              git clone --depth=1 -b "${ANYKERNEL_BRANCH}" "${ANYKERNEL_REPO}" AnyKernel3
+            fi
+
+            rm -f AnyKernel3/Image.gz
+            if command -v 7z > /dev/null 2>&1; then
+              7z a -tgzip -mx=9 -mfb=258 -mpass=7 AnyKernel3/Image.gz "$IMAGE_PATH" > /dev/null
+            else
+              gzip -9 -c "$IMAGE_PATH" > AnyKernel3/Image.gz
+            fi
+
+            cd AnyKernel3
+            rm -f *.zip
+            zip -r9 "$ZIP_NAME" . -x ".git*" -x "README.md" -x "*.zip"
+            cd ..
+
+            cp "AnyKernel3/$ZIP_NAME" artifacts/
+            cd artifacts
+            sha256sum "$ZIP_NAME" > "${ZIP_NAME}.sha256"
+            md5sum "$ZIP_NAME" > "${ZIP_NAME}.md5"
+            cd ..
+
+            echo "Flashable zip created: artifacts/$ZIP_NAME"
+            echo "MD5: $(cat "artifacts/${ZIP_NAME}.md5")"
+            echo "SHA256: $(cat "artifacts/${ZIP_NAME}.sha256")"
+
+      - run:
+          name: "Send Telegram Notification (Optional)"
+          when: always
+          command: |
+            if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_CHAT_ID}" ]; then
+              ZIP_FILE=$(find artifacts -name "*.zip" | head -n 1)
+              COMMIT_URL="https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/commit/${CIRCLE_SHA1}"
+
+              if [ -n "$ZIP_FILE" ] && [ -f "$ZIP_FILE" ]; then
+                ZIP_NAME=$(basename "$ZIP_FILE")
+                ZIP_SIZE=$(du -h "$ZIP_FILE" | awk '{print $1}')
+                MD5=$(awk '{print $1}' "${ZIP_FILE}.md5" 2>/dev/null || echo "N/A")
+
+                CAPTION="⚔️ <b>${KERNEL_NAME} Build Succeeded!</b>"$'\n'
+                CAPTION+="📱 <b>Device:</b> POCO X3 NFC (${DEVICE_CODENAME})"$'\n'
+                CAPTION+="🌿 <b>Branch:</b> <code>${CIRCLE_BRANCH}</code>"$'\n'
+                CAPTION+="🔖 <b>Commit:</b> <a href=\"${COMMIT_URL}\">${CIRCLE_SHA1:0:7}</a>"$'\n'
+                CAPTION+="📦 <b>Package:</b> <code>${ZIP_NAME}</code> (${ZIP_SIZE})"$'\n'
+                CAPTION+="🔑 <b>MD5:</b> <code>${MD5}</code>"
+
+                curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendDocument" \
+                  -F chat_id="${TELEGRAM_CHAT_ID}" \
+                  -F "document=@${ZIP_FILE}" \
+                  -F "caption=${CAPTION}" \
+                  -F "parse_mode=HTML"
+              else
+                MESSAGE="❌ <b>${KERNEL_NAME} Build Failed!</b>"$'\n'
+                MESSAGE+="📱 <b>Device:</b> POCO X3 NFC (${DEVICE_CODENAME})"$'\n'
+                MESSAGE+="🌿 <b>Branch:</b> <code>${CIRCLE_BRANCH}</code>"$'\n'
+                MESSAGE+="🔖 <b>Commit:</b> <a href=\"${COMMIT_URL}\">${CIRCLE_SHA1:0:7}</a>"
+
+                if [ -f "build.log" ]; then
+                  tail -n 100 build.log > error_tail.log
+                  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendDocument" \
+                    -F chat_id="${TELEGRAM_CHAT_ID}" \
+                    -F "document=@error_tail.log" \
+                    -F "caption=${MESSAGE}" \
+                    -F "parse_mode=HTML"
+                else
+                  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+                    -F chat_id="${TELEGRAM_CHAT_ID}" \
+                    -F "text=${MESSAGE}" \
+                    -F "parse_mode=HTML"
+                fi
+              fi
+            else
+              echo "TELEGRAM_TOKEN or TELEGRAM_CHAT_ID not set. Skipping Telegram notification."
+            fi
+
+      - save_cache:
+          name: "Save Clang toolchain cache"
+          key: clang-rastamod69-20.0.0
+          paths:
+            - clang
+
+      - save_cache:
+          name: "Save ccache"
+          key: ccache-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /home/circleci/.ccache
+
+      - store_artifacts:
+          path: artifacts
+          destination: kernel-package
+
+      - store_artifacts:
+          path: build.log
+          destination: logs
+
+workflows:
+  version: 2
+  build-kernel-workflow:
+    jobs:
+      - build-kernel
