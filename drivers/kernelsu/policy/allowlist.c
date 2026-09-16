@@ -133,33 +133,6 @@ static inline bool forbid_system_uid(uid_t uid)
     return uid < SHELL_UID && uid != SYSTEM_UID;
 }
 
-static void migrate_profile(u32 version, struct app_profile *profile)
-{
-    char *domain;
-    static const size_t domain_len = sizeof(profile->rp_config.profile.selinux_domain);
-
-    switch (version) {
-    case 2:
-        if (profile->allow_su) {
-            domain = profile->rp_config.profile.selinux_domain;
-            if (strncmp(domain, "u:r:su:s0", domain_len) == 0) {
-                memset(domain, 0, domain_len);
-                // domain_len - 1 as implicit null termination
-                strncpy(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len - 1);
-                pr_info("migrated domain of profile: %s\n", profile->key);
-            }
-        }
-        fallthrough;
-    case 3:
-        if (profile->allow_su) {
-            profile->rp_config.profile.flags = FLAG_KSU_NO_NEW_PRIVS;
-        }
-        break;
-    }
-
-    profile->version = KSU_APP_PROFILE_VER;
-}
-
 static bool profile_valid(struct app_profile *profile)
 {
     if (!profile) {
@@ -171,7 +144,7 @@ static bool profile_valid(struct app_profile *profile)
         return false;
     }
 
-    if (profile->version < 2 || profile->version > KSU_APP_PROFILE_VER) {
+    if (profile->version != KSU_APP_PROFILE_VER) {
         pr_info("Unsupported profile version: %d\n", profile->version);
         return false;
     }
@@ -215,10 +188,6 @@ int ksu_set_app_profile(struct app_profile *profile)
     if (!profile_valid(profile)) {
         pr_err("Failed to set app profile: invalid profile!\n");
         return -EINVAL;
-    }
-
-    if (profile->version < KSU_APP_PROFILE_VER) {
-        migrate_profile(profile->version, profile);
     }
 
 #ifdef CONFIG_KSU_DISABLE_POLICY
@@ -347,9 +316,6 @@ bool ksu_uid_should_umount(uid_t uid)
         // we should not umount on manager!
         return false;
     }
-    if (unlikely(uid == WEBVIEW_ZYGOTE_UID)) {
-        return ksu_webview_zygote_umount_enabled;
-    }
 #ifdef CONFIG_KSU_DISABLE_POLICY
     return !__ksu_is_allow_uid(uid);
 #else
@@ -457,6 +423,33 @@ bool ksu_get_allow_list(int *array, u16 length, u16 *out_length, u16 *out_total,
     }
 
     return true;
+}
+
+static void migrate_profile(u32 version, struct app_profile *profile)
+{
+    char *domain;
+    static const size_t domain_len = sizeof(profile->rp_config.profile.selinux_domain);
+
+    switch (version) {
+    case 2:
+        if (profile->allow_su) {
+            domain = profile->rp_config.profile.selinux_domain;
+            if (strncmp(domain, "u:r:su:s0", domain_len) == 0) {
+                memset(domain, 0, domain_len);
+                // domain_len - 1 as implicit null termination
+                strncpy(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len - 1);
+                pr_info("migrated domain of profile: %s\n", profile->key);
+            }
+        }
+        fallthrough;
+    case 3:
+        if (profile->allow_su) {
+            profile->rp_config.profile.flags = FLAG_KSU_NO_NEW_PRIVS;
+        }
+        break;
+    }
+
+    profile->version = KSU_APP_PROFILE_VER;
 }
 
 void do_persistent_allow_list(void *unused)
