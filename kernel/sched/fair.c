@@ -8911,6 +8911,10 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	 * This is the core EEVDF advantage: tasks with shorter slices
 	 * get earlier deadlines and thus preempt longer-running tasks,
 	 * giving better latency to interactive workloads.
+	 *
+	 * If EEVDF does not preempt, fall through to standard CFS
+	 * preemption check so waking tasks with significantly lower
+	 * vruntime can still preempt normally (preventing wake stalls).
 	 */
 	if (sched_feat(EEVDF) && sched_feat(WAKEUP_PREEMPTION)) {
 		if (entity_eligible(cfs_rq_of(pse), pse) &&
@@ -8919,7 +8923,6 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 				set_next_buddy(pse);
 			goto preempt;
 		}
-		return;
 	}
 #endif
 
