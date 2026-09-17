@@ -121,6 +121,17 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
+config CPU_FREQ_DEFAULT_GOV_REFLEX
+	bool "reflex"
+	depends on SMP
+	select CPU_FREQ_GOV_SCHEDUTIL
+	select CPU_FREQ_GOV_REFLEX
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+	  Use the 'reflex' CPUFreq governor as default. This governor combines
+	  interactive-style fast ramp-up with schedutil's scheduler utilization
+	  tracking. The fallback governor will be 'performance'.
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
