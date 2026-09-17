@@ -29,8 +29,6 @@ jobs:
       ANYKERNEL_BRANCH: "master"
       CCACHE_DIR: "/home/circleci/.ccache"
       CCACHE_MAXSIZE: "2G"
-      TELEGRAM_TOKEN: "8361452146:AAEnUBgpiSQjpnnSWD9yJANyW_UrKSoyR7Q"
-      TELEGRAM_CHAT_ID: "8306790879"
 
     steps:
       - checkout
