@@ -30,7 +30,7 @@ jobs:
       CCACHE_DIR: "/home/circleci/.ccache"
       CCACHE_MAXSIZE: "2G"
       TELEGRAM_TOKEN: "8361452146:AAEnUBgpiSQjpnnSWD9yJANyW_UrKSoyR7Q"
-      TELEGRAM_CHAT_ID: "-1002978970156"
+      TELEGRAM_CHAT_ID: "8751030569"
 
     steps:
       - checkout
