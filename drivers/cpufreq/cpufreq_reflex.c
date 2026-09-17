@@ -114,7 +114,6 @@ struct rfx_cpu {
 	u64			prev_wall_time;
 	unsigned int		busy_pct;
 	unsigned int		filtered_busy_pct;
-	bool			hispeed_active;
 	u64			hispeed_start_ns;
 	s32			log_hispeed;	  /* hispeed_util in log32fpmax_corr */
 	unsigned int		hispeed_idle_windows;
@@ -327,31 +326,9 @@ static void rfx_update_busy_pct(struct rfx_cpu *rfx_c,
 	cur_idle = get_cpu_idle_time(rfx_c->cpu, &cur_wall, 1);
 	wall_delta = (unsigned int)(cur_wall - rfx_c->prev_wall_time);
 
-	if (wall_delta >= window_us) {
-		/*
-		 * Phase 1: Window expired.  Reset busy_pct and request
-		 * an immediate measurement on the next callback.
-		 *
-		 * Do NOT touch hispeed_start_ns or hispeed_idle_windows
-		 * here: the momentary busy_pct=0 is a two-phase
-		 * measurement artifact, not a genuine idle signal.
-		 */
-		rfx_c->busy_pct = 0;
-		rfx_c->hispeed_active = true;
-		rfx_c->prev_idle_time = cur_idle;
-		rfx_c->prev_wall_time = cur_wall;
+	/* Only update busy_pct when the observation window has elapsed */
+	if (wall_delta < window_us)
 		return;
-	}
-
-	/*
-	 * Within the current window.  Skip unless hispeed_active is
-	 * set, which requests an immediate post-reset measurement.
-	 */
-	if (!rfx_c->hispeed_active)
-		return;
-
-	/* Phase 2: immediate post-reset measurement. */
-	rfx_c->hispeed_active = false;
 
 	if (cur_idle > rfx_c->prev_idle_time)
 		idle_delta = (unsigned int)(cur_idle - rfx_c->prev_idle_time);
