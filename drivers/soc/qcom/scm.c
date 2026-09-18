@@ -1295,10 +1295,10 @@ int scm_enable_mem_protection(void)
 	}
 
 	if (ret == -1) {
-		pr_debug("%s: SCM call not supported\n", __func__);
+		pr_err("%s: SCM call not supported\n", __func__);
 		return ret;
 	} else if (ret || resp) {
-		pr_debug("%s: SCM call failed\n", __func__);
+		pr_err("%s: SCM call failed\n", __func__);
 		if (ret)
 			return ret;
 		else

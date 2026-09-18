@@ -159,7 +159,6 @@
 	};
 
 	rpmh-regulator-smpf1 {
-		status = "disabled";
 		compatible = "qcom,rpmh-vrm-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "smpf1";
@@ -173,7 +172,6 @@
 	};
 
 	rpmh-regulator-smpf2 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "smpf2";
@@ -784,7 +782,6 @@
 	};
 
 	rpmh-regulator-ldof1 {
-		status = "disabled";
 		compatible = "qcom,rpmh-vrm-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof1";
@@ -804,7 +801,6 @@
 	};
 
 	rpmh-regulator-ldof2 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof2";
@@ -817,7 +813,6 @@
 	};
 
 	rpmh-regulator-ldof4 {
-		status = "disabled";
 		compatible = "qcom,rpmh-vrm-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof4";
@@ -837,7 +832,6 @@
 	};
 
 	rpmh-regulator-ldof5 {
-		status = "disabled";
 		compatible = "qcom,rpmh-vrm-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof5";
@@ -857,7 +851,6 @@
 	};
 
 	rpmh-regulator-ldof6 {
-		status = "disabled";
 		compatible = "qcom,rpmh-vrm-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof6";
@@ -877,7 +870,6 @@
 	};
 
 	rpmh-regulator-ldof7 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof7";

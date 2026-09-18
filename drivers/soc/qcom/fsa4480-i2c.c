@@ -350,18 +350,13 @@ static void fsa4480_usbc_analog_work_fn(struct work_struct *work)
 	pm_relax(fsa_priv->dev);
 }
 
-static int fsa4480_update_reg_defaults(struct regmap *regmap)
+static void fsa4480_update_reg_defaults(struct regmap *regmap)
 {
 	u8 i;
-	int rc;
 
-	for (i = 0; i < ARRAY_SIZE(fsa_reg_i2c_defaults); i++) {
-		rc = regmap_write(regmap, fsa_reg_i2c_defaults[i].reg,
+	for (i = 0; i < ARRAY_SIZE(fsa_reg_i2c_defaults); i++)
+		regmap_write(regmap, fsa_reg_i2c_defaults[i].reg,
 				   fsa_reg_i2c_defaults[i].val);
-		if (rc)
-			return rc;
-	}
-	return 0;
 }
 
 static int fsa4480_probe(struct i2c_client *i2c,
@@ -398,13 +393,7 @@ static int fsa4480_probe(struct i2c_client *i2c,
 		goto err_supply;
 	}
 
-	rc = fsa4480_update_reg_defaults(fsa_priv->regmap);
-	if (rc) {
-		dev_dbg(fsa_priv->dev, "%s: device not detected: %d\n",
-			__func__, rc);
-		rc = -ENODEV;
-		goto err_supply;
-	}
+	fsa4480_update_reg_defaults(fsa_priv->regmap);
 
 	fsa_priv->psy_nb.notifier_call = fsa4480_usbc_event_changed;
 	fsa_priv->psy_nb.priority = 0;

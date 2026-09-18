@@ -18,7 +18,6 @@
 		reg = <0xa SPMI_USID>;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		status = "disabled";
 
 		qcom,revid@100 {
 			compatible = "qcom,qpnp-revid";
@@ -36,7 +35,6 @@
 			gpio-controller;
 			#gpio-cells = <2>;
 			qcom,gpios-disallowed = <3>;
-			status = "disabled";
 		};
 	};
 
@@ -45,6 +43,5 @@
 		reg = <0xb SPMI_USID>;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		status = "disabled";
 	};
 };
