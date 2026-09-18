@@ -24,6 +24,7 @@
 #include <linux/init.h>
 #include <linux/irq_work.h>
 #include <linux/kthread.h>
+#include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/sched/cpufreq.h>
@@ -320,9 +321,36 @@ static void rfx_update_busy_pct(struct rfx_cpu *rfx_c,
 				unsigned int filter_shift, u64 time,
 				unsigned long max_cap)
 {
-	u64 cur_wall = div_u64(time, NSEC_PER_USEC);
+	/*
+	 * Derive the wall clock from the same timebase as
+	 * get_cpu_idle_time() (ktime), not from the scheduler callback
+	 * clock.  Mixing sched_clock()/rq_clock() wall deltas with
+	 * ktime-based idle deltas makes the busy% ratio meaningless and
+	 * can report ~100% busy on an idle CPU, pinning the hispeed floor
+	 * at max frequency.
+	 */
+	u64 cur_wall = div_u64(ktime_get_ns(), NSEC_PER_USEC);
 	u64 cur_idle;
 	unsigned int wall_delta, idle_delta;
+
+	/*
+	 * An idle CPU must drop the hispeed floor immediately, even if the
+	 * observation window has not elapsed yet.  Otherwise the last
+	 * scheduling callback (taken just before the CPU goes idle, while
+	 * idle_cpu() is still false) leaves the floor at max and no further
+	 * callback arrives to decay it, pinning the frequency at maximum
+	 * with no tasks running.
+	 */
+	if (idle_cpu(rfx_c->cpu)) {
+		rfx_c->busy_pct = 0;
+		rfx_c->filtered_busy_pct = 0;
+		rfx_c->log_hispeed = RFX_LOG_0;
+		rfx_c->hispeed_start_ns = 0;
+		rfx_c->hispeed_idle_windows = 0;
+		rfx_c->prev_wall_time = cur_wall;
+		rfx_c->prev_idle_time = get_cpu_idle_time(rfx_c->cpu, NULL, 0);
+		return;
+	}
 
 	if (cur_wall <= rfx_c->prev_wall_time)
 		return;
@@ -339,9 +367,7 @@ static void rfx_update_busy_pct(struct rfx_cpu *rfx_c,
 	else
 		idle_delta = 0;
 
-	if (idle_cpu(rfx_c->cpu)) {
-		rfx_c->busy_pct = 0;
-	} else if (wall_delta > idle_delta) {
+	if (wall_delta > idle_delta) {
 		unsigned int busy_time = wall_delta - idle_delta;
 		rfx_c->busy_pct = min(100U, (100U * busy_time) / wall_delta);
 	} else {
@@ -381,7 +407,7 @@ static void rfx_update_busy_pct(struct rfx_cpu *rfx_c,
 	if (rfx_c->filtered_busy_pct > 0) {
 		rfx_c->hispeed_idle_windows = 0;
 		if (!rfx_c->hispeed_start_ns)
-			rfx_c->hispeed_start_ns = time;
+			rfx_c->hispeed_start_ns = ktime_get_ns();
 		rfx_c->log_hispeed = rfx_lin_to_log(
 			max_cap * rfx_c->filtered_busy_pct / 100);
 	} else {
@@ -418,6 +444,7 @@ static unsigned long rfx_blend_util(struct rfx_cpu *rfx_c,
 {
 	unsigned long hispeed_util, hispeed_decayed;
 	unsigned int elapsed_ms;
+	u64 now;
 	s32 log_decayed;
 
 	if (!rfx_c->filtered_busy_pct || !rfx_c->hispeed_start_ns)
@@ -436,10 +463,18 @@ static unsigned long rfx_blend_util(struct rfx_cpu *rfx_c,
 	if (hispeed_util <= pelt_util)
 		return pelt_util;
 
-	if (time <= rfx_c->hispeed_start_ns)
+	/*
+	 * hispeed_start_ns is stamped with ktime; measure the elapsed time
+	 * in the same global timebase.  Using the per-CPU scheduler clock
+	 * here (which is not synchronized across CPUs) could yield
+	 * elapsed_ms == 0 indefinitely on a shared policy, keeping the
+	 * hispeed floor pinned at max frequency.
+	 */
+	now = ktime_get_ns();
+	if (now <= rfx_c->hispeed_start_ns)
 		elapsed_ms = 0;
 	else
-		elapsed_ms = (unsigned int)((time - rfx_c->hispeed_start_ns)
+		elapsed_ms = (unsigned int)((now - rfx_c->hispeed_start_ns)
 					    / NSEC_PER_MSEC);
 
 	if (elapsed_ms >= RFX_LOG_DECAY_MAX_MS)
