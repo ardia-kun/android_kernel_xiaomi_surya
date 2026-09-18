@@ -704,7 +704,20 @@ static unsigned int rfx_next_freq_shared(struct rfx_cpu *rfx_c, u64 time)
 		unsigned long j_boost, j_util;
 
 		j_boost = rfx_iowait_apply(j_rfx_c, time, max_cap);
-		rfx_get_util(j_rfx_c, j_boost);
+
+		/*
+		 * Only refresh the utilization of the CPU that triggered this
+		 * callback.  cpufreq_get_effective_util() ends up in
+		 * sugov_get_util() -> sched_avg_update(), which reads the
+		 * target rq clock and therefore requires that rq's lock to be
+		 * held.  That only holds for the local CPU, so calling it for
+		 * a remote CPU in a shared policy trips
+		 * assert_clock_updated()/SCHED_WARN_ON and must be avoided.
+		 * Remote CPUs keep their last known util, exactly like
+		 * schedutil's sugov_next_freq_shared().
+		 */
+		if (j == rfx_c->cpu)
+			rfx_get_util(j_rfx_c, j_boost);
 		j_util = max(j_rfx_c->util, j_boost);
 
 		rfx_update_busy_pct(j_rfx_c, tunables->hispeed_window_us,

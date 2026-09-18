@@ -303,18 +303,7 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu,
 	*util = boosted_cpu_util(cpu, &loadcpu->walt_load);
 
 	if (likely(use_pelt())) {
-		/*
-		 * sched_avg_update() decays rq->rt_avg and reads the rq clock,
-		 * which requires the target CPU's rq lock to be held
-		 * (assert_clock_updated()/lockdep_assert_held).  External
-		 * governors may query a remote CPU's utilization from another
-		 * CPU, so only decay when running on the target CPU itself.
-		 * The value is still decayed periodically by the scheduler tick
-		 * (cpu_load_update()) on the owning CPU, so reading the racy
-		 * rq->rt_avg here is safe and keeps the RT contribution.
-		 */
-		if (cpu == smp_processor_id())
-			sched_avg_update(rq);
+		sched_avg_update(rq);
 		delta = time - rq->age_stamp;
 		if (unlikely(delta < 0))
 			delta = 0;
