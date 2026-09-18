@@ -630,8 +630,9 @@ static int lpi_pinctrl_probe(struct platform_device *pdev)
 	ret = audio_notifier_register("lpi_tlmm", AUDIO_NOTIFIER_ADSP_DOMAIN,
 				      &service_nb);
 	if (ret < 0) {
-		pr_err("%s: Audio notifier register failed ret = %d\n",
-			__func__, ret);
+		if (ret != -EPROBE_DEFER)
+			pr_err("%s: Audio notifier register failed ret = %d\n",
+				__func__, ret);
 		goto err_range;
 	}
 

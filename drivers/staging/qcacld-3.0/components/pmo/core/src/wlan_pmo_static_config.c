@@ -83,6 +83,9 @@ void pmo_register_wow_wakeup_events(struct wlan_objmgr_vdev *vdev)
 		pmo_set_ndp_wow_bitmask(event_bitmap, PMO_WOW_MAX_EVENT_BM_LEN);
 		break;
 
+	case QDF_NAN_DISC_MODE:
+		return;
+
 	default:
 		pmo_err("Skipping wake event configuration for vdev_opmode %d",
 			vdev_opmode);

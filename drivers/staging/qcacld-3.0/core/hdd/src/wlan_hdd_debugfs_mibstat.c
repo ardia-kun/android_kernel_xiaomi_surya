@@ -37,6 +37,7 @@ struct mib_stats_buf {
 static struct mib_stats_buf mib_stats;
 
 qdf_mutex_t mibstats_lock;
+static qdf_atomic_t mibstats_lock_ref_cnt;
 
 void hdd_debugfs_process_mib_stats(struct hdd_adapter *adapter,
 				   struct stats_event *stats)
@@ -347,10 +348,13 @@ int wlan_hdd_create_mib_stats_file(struct hdd_adapter *adapter)
 				 adapter->dev, &fops_mib_stats))
 		return -EINVAL;
 
-	if (QDF_IS_STATUS_ERROR(qdf_mutex_create(
-				&mibstats_lock))) {
-		hdd_debug("mibstats lock init failed!");
-		return QDF_STATUS_E_FAILURE;
+	if (qdf_atomic_inc_return(&mibstats_lock_ref_cnt) == 1) {
+		if (QDF_IS_STATUS_ERROR(qdf_mutex_create(
+					&mibstats_lock))) {
+			qdf_atomic_dec(&mibstats_lock_ref_cnt);
+			hdd_debug("mibstats lock init failed!");
+			return QDF_STATUS_E_FAILURE;
+		}
 	}
 
 	return 0;
@@ -358,5 +362,6 @@ int wlan_hdd_create_mib_stats_file(struct hdd_adapter *adapter)
 
 void wlan_hdd_destroy_mib_stats_lock(void)
 {
-	qdf_mutex_destroy(&mibstats_lock);
+	if (qdf_atomic_dec_and_test(&mibstats_lock_ref_cnt))
+		qdf_mutex_destroy(&mibstats_lock);
 }

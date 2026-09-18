@@ -236,7 +236,7 @@ static bool add_rule(struct policydb *db, const char *s, const char *t, const ch
     if (s) {
         src = symtab_search(&db->p_types, s);
         if (src == NULL) {
-            pr_info("source type %s does not exist\n", s);
+            pr_debug("source type %s does not exist\n", s);
             return false;
         }
     }
@@ -244,7 +244,7 @@ static bool add_rule(struct policydb *db, const char *s, const char *t, const ch
     if (t) {
         tgt = symtab_search(&db->p_types, t);
         if (tgt == NULL) {
-            pr_info("target type %s does not exist\n", t);
+            pr_debug("target type %s does not exist\n", t);
             return false;
         }
     }
@@ -252,14 +252,14 @@ static bool add_rule(struct policydb *db, const char *s, const char *t, const ch
     if (c) {
         cls = symtab_search(&db->p_classes, c);
         if (cls == NULL) {
-            pr_info("class %s does not exist\n", c);
+            pr_debug("class %s does not exist\n", c);
             return false;
         }
     }
 
     if (p) {
         if (c == NULL) {
-            pr_info("No class is specified, cannot add perm [%s] \n", p);
+            pr_debug("No class is specified, cannot add perm [%s] \n", p);
             return false;
         }
 
@@ -268,7 +268,7 @@ static bool add_rule(struct policydb *db, const char *s, const char *t, const ch
             perm = symtab_search(&cls->comdatum->permissions, p);
         }
         if (perm == NULL) {
-            pr_info("perm %s does not exist in class %s\n", p, c);
+            pr_debug("perm %s does not exist in class %s\n", p, c);
             return false;
         }
     }
@@ -452,7 +452,7 @@ static bool add_xperm_rule(struct policydb *db, const char *s, const char *t, co
     if (s) {
         src = symtab_search(&db->p_types, s);
         if (src == NULL) {
-            pr_info("source type %s does not exist\n", s);
+            pr_debug("source type %s does not exist\n", s);
             return false;
         }
     }
@@ -460,7 +460,7 @@ static bool add_xperm_rule(struct policydb *db, const char *s, const char *t, co
     if (t) {
         tgt = symtab_search(&db->p_types, t);
         if (tgt == NULL) {
-            pr_info("target type %s does not exist\n", t);
+            pr_debug("target type %s does not exist\n", t);
             return false;
         }
     }
@@ -468,7 +468,7 @@ static bool add_xperm_rule(struct policydb *db, const char *s, const char *t, co
     if (c) {
         cls = symtab_search(&db->p_classes, c);
         if (cls == NULL) {
-            pr_info("class %s does not exist\n", c);
+            pr_debug("class %s does not exist\n", c);
             return false;
         }
     }

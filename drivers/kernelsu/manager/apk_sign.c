@@ -139,7 +139,7 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, u8 *matc
 
 #define CERT_MAX_LENGTH 1024
     if (certificate_size > CERT_MAX_LENGTH) {
-        pr_info("cert length overlimit\n");
+        pr_debug("cert length overlimit\n");
         return false;
     }
 
@@ -149,7 +149,7 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, u8 *matc
 
     unsigned char digest[SHA256_DIGEST_SIZE];
     if (ksu_sha256(cert, certificate_size, digest)) {
-        pr_info("sha256 error\n");
+        pr_debug("sha256 error\n");
         return false;
     }
 
@@ -157,7 +157,7 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, u8 *matc
     hash_str[SHA256_DIGEST_SIZE * 2] = '\0';
 
     bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
-    pr_info("sha256: %s\n", hash_str);
+    pr_debug("sha256: %s\n", hash_str);
 
     // keep 255, 254, 253 here
     // 255 reserved for dynamic manager

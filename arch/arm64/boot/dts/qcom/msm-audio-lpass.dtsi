@@ -764,6 +764,7 @@
 	};
 
 	tdm_sen_rx: qcom,msm-dai-tdm-sen-rx {
+		status = "disabled";
 		compatible = "qcom,msm-dai-tdm";
 		qcom,msm-cpudai-tdm-group-id = <37200>;
 		qcom,msm-cpudai-tdm-group-num-ports = <1>;
@@ -783,6 +784,7 @@
 	};
 
 	tdm_sen_tx: qcom,msm-dai-tdm-sen-tx {
+		status = "disabled";
 		compatible = "qcom,msm-dai-tdm";
 		qcom,msm-cpudai-tdm-group-id = <37201>;
 		qcom,msm-cpudai-tdm-group-num-ports = <1>;

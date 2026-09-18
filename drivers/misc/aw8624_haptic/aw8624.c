@@ -239,8 +239,9 @@ static int aw8624_i2c_read(struct aw8624 *aw8624,
 	while (cnt < AW_I2C_RETRIES) {
 		ret = i2c_smbus_read_byte_data(aw8624->i2c, reg_addr);
 		if (ret < 0) {
-			pr_err("%s: i2c_read cnt=%d error=%d\n", __func__, cnt,
-			       ret);
+			if (cnt == AW_I2C_RETRIES - 1)
+				pr_err("%s: i2c_read cnt=%d error=%d\n", __func__, cnt,
+				       ret);
 		} else {
 			*reg_data = ret;
 			break;
@@ -3008,7 +3009,7 @@ static int aw8624_hw_reset(struct aw8624 *aw8624)
 			msleep(5);
 			gpio_set_value_cansleep(aw8624->reset_gpio, 1);
 			VIB_DEBUG("pull up1");
-			msleep(5);
+			msleep(10);
 		} else {
 			dev_err(aw8624->dev, "%s:  failed\n", __func__);
 		}
@@ -3033,21 +3034,24 @@ static int aw8624_read_chipid(struct aw8624 *aw8624)
 		aw8624_hw_reset(aw8624);
 		ret = aw8624_i2c_read(aw8624, AW8624_REG_ID, &reg);
 		if (ret < 0) {
-			dev_err(aw8624->dev,
-				"%s: failed to read register AW8624_REG_ID: %d\n",
-				__func__, ret);
-		}
-		pr_info("%s  reg %X \n", __func__, reg);
-		switch (reg) {
-		case 0x24:
-			pr_info("%s aw8624 detected\n", __func__);
-			aw8624->chipid = AW8624_ID;
-			aw8624_haptic_softreset(aw8624);
-			return 0;
-		default:
-			pr_info("%s unsupported device revision (0x%x)\n",
-				__func__, reg);
-			break;
+			if (cnt == AW_READ_CHIPID_RETRIES - 1)
+				dev_err(aw8624->dev,
+					"%s: failed to read register AW8624_REG_ID: %d\n",
+					__func__, ret);
+		} else {
+			pr_debug("%s  reg %X \n", __func__, reg);
+			switch (reg) {
+			case 0x24:
+				pr_info("%s aw8624 detected\n", __func__);
+				aw8624->chipid = AW8624_ID;
+				aw8624_haptic_softreset(aw8624);
+				return 0;
+			default:
+				if (cnt == AW_READ_CHIPID_RETRIES - 1)
+					pr_info("%s unsupported device revision (0x%x)\n",
+						__func__, reg);
+				break;
+			}
 		}
 		cnt++;
 

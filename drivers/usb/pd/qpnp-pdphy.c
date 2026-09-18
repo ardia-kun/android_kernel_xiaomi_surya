@@ -877,12 +877,14 @@ static int pdphy_probe(struct platform_device *pdev)
 
 	pdphy->usbpd = usbpd_create(&pdev->dev);
 	if (IS_ERR(pdphy->usbpd)) {
-		dev_err(&pdev->dev, "usbpd_create failed: %ld\n",
-				PTR_ERR(pdphy->usbpd));
+		ret = PTR_ERR(pdphy->usbpd);
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "usbpd_create failed: %ld\n",
+					PTR_ERR(pdphy->usbpd));
 		__pdphy = NULL;
-		return PTR_ERR(pdphy->usbpd);
+		return ret;
 	}
-	dev_err(&pdev->dev, "usbpd_create success\n");
+	dev_dbg(&pdev->dev, "usbpd_create success\n");
 
 	pdphy_create_debugfs_entries(pdphy);
 

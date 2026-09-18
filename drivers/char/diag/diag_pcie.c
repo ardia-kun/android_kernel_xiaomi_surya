@@ -727,7 +727,7 @@ int diag_pcie_register(int id, int ctxt, struct diag_mux_ops *ops)
 		if (ch->wq)
 			destroy_workqueue(ch->wq);
 		kfree(ch->in_chan_attr.read_buffer);
-		pr_err("diag: %s: failed registering pcie channels\n",
+		pr_debug("diag: %s: failed registering pcie channels\n",
 		__func__);
 		return rc;
 	}

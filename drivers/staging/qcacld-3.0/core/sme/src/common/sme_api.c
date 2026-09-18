@@ -4041,6 +4041,8 @@ static uint8_t sme_get_nss_chain_shift(enum QDF_OPMODE device_mode)
 		return OCB_NSS_CHAINS_SHIFT;
 	case QDF_TDLS_MODE:
 		return TDLS_NSS_CHAINS_SHIFT;
+	case QDF_NAN_DISC_MODE:
+		return NAN_NSS_CHAIN_SHIFT;
 
 	default:
 		sme_err("Device mode %d invalid", device_mode);
@@ -13284,7 +13286,7 @@ uint32_t sme_get_wni_dot11_mode(mac_handle_t mac_handle)
  *
  * Return: QDF_STATUS_SUCCESS on success, non-zero error code on failure.
  */
-QDF_STATUS sme_create_mon_session(mac_handle_t mac_handle, tSirMacAddr bss_id,
+QDF_STATUS sme_create_mon_session(mac_handle_t mac_handle, uint8_t *bss_id,
 				  uint8_t vdev_id)
 {
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;

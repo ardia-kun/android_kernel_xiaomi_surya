@@ -1104,8 +1104,9 @@ static void gpio_muxed_to_pdc(struct irq_domain *pdc_domain, struct irq_data *d)
 			/* setup the IRQ parent for the GPIO */
 			setup_pdc_gpio(pctrl->chip.irqdomain, irq, gpio);
 			/* program pdc select grp register */
-			writel_relaxed((mux & 0x3F), pctrl->pdc_regs +
-				(0x14 * j));
+			if (pctrl->pdc_regs)
+				writel_relaxed((mux & 0x3F), pctrl->pdc_regs +
+					(0x14 * j));
 			break;
 		}
 		/* We have no more PDC port available */
@@ -2127,7 +2128,10 @@ int msm_pinctrl_probe(struct platform_device *pdev,
 
 	key = "pdc";
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, key);
-	pctrl->pdc_regs = devm_ioremap_resource(&pdev->dev, res);
+	if (res)
+		pctrl->pdc_regs = devm_ioremap_resource(&pdev->dev, res);
+	else
+		pctrl->pdc_regs = NULL;
 
 	key = "spi_cfg";
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, key);

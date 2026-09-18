@@ -4996,7 +4996,7 @@ static void usbpd_mi_vdm_received_cb(struct usbpd_svid_handler *hdlr, u32 vdm_hd
 	cmd = UVDM_HDR_CMD(vdm_hdr);
 
 	usbpd_dbg(&pd->dev, "hdlr->svid:0x%x, vdm_hdr:0x%x, num_vdos:%d, cmd:%d\n",
-			hdlr->svid, vdm_hdr, num_vdos);
+			hdlr->svid, vdm_hdr, num_vdos, cmd);
 
 	switch (cmd) {
 	case USBPD_UVDM_CHARGER_VERSION:
@@ -5084,11 +5084,11 @@ int usbpd_fetch_pdo(struct usbpd *pd, struct usbpd_pdo *pdos)
 		goto out;
 	}
 
-	pr_err("usbpd pd=%x\n", pd);
+	usbpd_dbg(&pd->dev, "usbpd pd=%pK\n", pd);
 
 	for (i = 0; i < 7; i++) {
 		pdo = pd->received_pdos[i];
-		pr_err("PDO:%d\n", pdo);
+		usbpd_dbg(&pd->dev, "PDO:%d\n", pdo);
 		if (pdo == 0)
 			break;
 
@@ -5452,7 +5452,7 @@ struct usbpd *usbpd_create(struct device *parent)
 
 	g_pd = pd;
 
-	pr_err("usbpd_create successfully:pd=%x,g_pd=%x\n", pd, g_pd);
+	pr_info("usbpd_create successfully\n");
 	return pd;
 
 del_inst:
@@ -5466,7 +5466,8 @@ del_pd:
 free_pd:
 	num_pd_instances--;
 	put_device(&pd->dev);
-	pr_err("usbpd_create error\n");
+	if (ret != -EPROBE_DEFER)
+		pr_err("usbpd_create error\n");
 	return ERR_PTR(ret);
 }
 EXPORT_SYMBOL(usbpd_create);

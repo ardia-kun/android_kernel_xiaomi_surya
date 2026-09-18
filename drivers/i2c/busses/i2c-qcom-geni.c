@@ -883,8 +883,12 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 
 		ret = gi2c->err;
 		if (gi2c->err) {
-			GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
-				"i2c error :%d\n", gi2c->err);
+			if (gi2c->err == -ENOTCONN)
+				GENI_SE_DBG(gi2c->ipcl, false, gi2c->dev,
+					"i2c error :%d\n", gi2c->err);
+			else
+				GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
+					"i2c error :%d\n", gi2c->err);
 			break;
 		}
 	}

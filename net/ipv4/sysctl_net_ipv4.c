@@ -67,7 +67,7 @@ static void set_local_port_range(struct net *net, int range[2])
 	write_seqlock_bh(&net->ipv4.ip_local_ports.lock);
 	if (same_parity && !net->ipv4.ip_local_ports.warned) {
 		net->ipv4.ip_local_ports.warned = true;
-		pr_err_ratelimited("ip_local_port_range: prefer different parity for start/end values.\n");
+		pr_warn_ratelimited("ip_local_port_range: prefer different parity for start/end values.\n");
 	}
 	net->ipv4.ip_local_ports.range[0] = range[0];
 	net->ipv4.ip_local_ports.range[1] = range[1];
