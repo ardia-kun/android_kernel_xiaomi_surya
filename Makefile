@@ -71,20 +71,10 @@ unexport GREP_OPTIONS
 # To put more focus on warnings, be less verbose as default
 # Use 'make V=1' to see the full commands
 
-ifeq ("$(origin V)", "command line")
-  KBUILD_VERBOSE = $(V)
-endif
-ifndef KBUILD_VERBOSE
-  KBUILD_VERBOSE = 0
-endif
-
-ifeq ($(KBUILD_VERBOSE),1)
-  quiet =
-  Q =
-else
-  quiet=quiet_
-  Q = @
-endif
+# Paksa selalu quiet terlepas dari input V=1
+KBUILD_VERBOSE = 0
+quiet = quiet_
+Q = @
 
 # If the user is running make -s (silent mode), suppress echoing of
 # commands
