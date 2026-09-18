@@ -114,7 +114,6 @@ struct rfx_cpu {
 	u64			prev_wall_time;
 	unsigned int		busy_pct;
 	unsigned int		filtered_busy_pct;
-	bool			hispeed_active;
 	u64			hispeed_start_ns;
 	s32			log_hispeed;	  /* hispeed_util in log32fpmax_corr */
 	unsigned int		hispeed_idle_windows;
@@ -321,50 +320,36 @@ static void rfx_update_busy_pct(struct rfx_cpu *rfx_c,
 				unsigned int filter_shift, u64 time,
 				unsigned long max_cap)
 {
-	u64 cur_idle, cur_wall;
+	u64 cur_wall = div_u64(time, NSEC_PER_USEC);
+	u64 cur_idle;
 	unsigned int wall_delta, idle_delta;
 
-	cur_idle = get_cpu_idle_time(rfx_c->cpu, &cur_wall, 1);
+	if (cur_wall <= rfx_c->prev_wall_time)
+		return;
+
 	wall_delta = (unsigned int)(cur_wall - rfx_c->prev_wall_time);
-
-	if (wall_delta >= window_us) {
-		/*
-		 * Phase 1: Window expired.  Reset busy_pct and request
-		 * an immediate measurement on the next callback.
-		 *
-		 * Do NOT touch hispeed_start_ns or hispeed_idle_windows
-		 * here: the momentary busy_pct=0 is a two-phase
-		 * measurement artifact, not a genuine idle signal.
-		 */
-		rfx_c->busy_pct = 0;
-		rfx_c->hispeed_active = true;
-		rfx_c->prev_idle_time = cur_idle;
-		rfx_c->prev_wall_time = cur_wall;
-		return;
-	}
-
-	/*
-	 * Within the current window.  Skip unless hispeed_active is
-	 * set, which requests an immediate post-reset measurement.
-	 */
-	if (!rfx_c->hispeed_active)
+	if (wall_delta < window_us)
 		return;
 
-	/* Phase 2: immediate post-reset measurement. */
-	rfx_c->hispeed_active = false;
+	/* Safe, read-only idle-time query (does not mutate remote tick stats) */
+	cur_idle = get_cpu_idle_time(rfx_c->cpu, NULL, 0);
 
-	if (cur_idle > rfx_c->prev_idle_time)
+	if (cur_idle >= rfx_c->prev_idle_time)
 		idle_delta = (unsigned int)(cur_idle - rfx_c->prev_idle_time);
 	else
 		idle_delta = 0;
 
-	if (wall_delta > idle_delta)
-		rfx_c->busy_pct = 100 * (wall_delta - idle_delta) / wall_delta;
-	else
+	if (idle_cpu(rfx_c->cpu)) {
 		rfx_c->busy_pct = 0;
+	} else if (wall_delta > idle_delta) {
+		unsigned int busy_time = wall_delta - idle_delta;
+		rfx_c->busy_pct = min(100U, (100U * busy_time) / wall_delta);
+	} else {
+		rfx_c->busy_pct = 0;
+	}
 
-	rfx_c->prev_idle_time = cur_idle;
 	rfx_c->prev_wall_time = cur_wall;
+	rfx_c->prev_idle_time = cur_idle;
 
 	/*
 	 * Asymmetric EWMA filter on busy_pct:
@@ -438,13 +423,25 @@ static unsigned long rfx_blend_util(struct rfx_cpu *rfx_c,
 	if (!rfx_c->filtered_busy_pct || !rfx_c->hispeed_start_ns)
 		return pelt_util;
 
+	/*
+	 * When the CPU is completely idle or utilization is negligible,
+	 * bypass the hispeed floor. Hispeed is meant to boost active
+	 * workloads before PELT catches up, never to pin idle CPUs.
+	 */
+	if (idle_cpu(rfx_c->cpu) || pelt_util == 0)
+		return pelt_util;
+
 	hispeed_util = max_cap * rfx_c->filtered_busy_pct / 100;
 
 	if (hispeed_util <= pelt_util)
 		return pelt_util;
 
-	elapsed_ms = (unsigned int)((time - rfx_c->hispeed_start_ns)
-				    / NSEC_PER_MSEC);
+	if (time <= rfx_c->hispeed_start_ns)
+		elapsed_ms = 0;
+	else
+		elapsed_ms = (unsigned int)((time - rfx_c->hispeed_start_ns)
+					    / NSEC_PER_MSEC);
+
 	if (elapsed_ms >= RFX_LOG_DECAY_MAX_MS)
 		return pelt_util;
 
@@ -1070,8 +1067,8 @@ static int rfx_start(struct cpufreq_policy *policy)
 		rfx_c->cpu = cpu;
 		rfx_c->rfx_policy = rfx_pol;
 		/* Initialize idle-time baseline for hispeed busy% */
-		rfx_c->prev_idle_time = get_cpu_idle_time(cpu,
-					&rfx_c->prev_wall_time, 1);
+		rfx_c->prev_wall_time = div_u64(ktime_get_ns(), NSEC_PER_USEC);
+		rfx_c->prev_idle_time = get_cpu_idle_time(cpu, NULL, 0);
 		cpufreq_add_update_util_hook(cpu, &rfx_c->update_util, uu);
 	}
 	return 0;
