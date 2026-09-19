@@ -17,7 +17,7 @@
 #include "msm_vidc_debug.h"
 #include "vidc_hfi_api.h"
 
-int msm_vidc_debug = VIDC_ERR | VIDC_WARN | VIDC_FW;
+int msm_vidc_debug = VIDC_ERR | VIDC_WARN;
 EXPORT_SYMBOL(msm_vidc_debug);
 
 int msm_vidc_debug_out = VIDC_OUT_PRINTK;
@@ -283,11 +283,13 @@ struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 		goto failed_create_dir;
 	}
 
+	if (!IS_ENABLED(CONFIG_DEBUG_FS))
+		goto failed_create_dir;
+
 	snprintf(debugfs_name, MAX_DEBUGFS_NAME, "core%d", core->id);
 	dir = debugfs_create_dir(debugfs_name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		dir = NULL;
-		dprintk(VIDC_ERR, "Failed to create debugfs for msm_vidc\n");
 		goto failed_create_dir;
 	}
 	if (!debugfs_create_file("info", 0444, dir, core, &core_info_fops)) {
@@ -503,10 +505,12 @@ struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
 	idata->core = inst->core;
 	idata->inst = inst;
 
+	if (!IS_ENABLED(CONFIG_DEBUG_FS))
+		goto failed_create_dir;
+
 	dir = debugfs_create_dir(debugfs_name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		dir = NULL;
-		dprintk(VIDC_ERR, "Failed to create debugfs for msm_vidc\n");
 		goto failed_create_dir;
 	}
 

@@ -1352,7 +1352,7 @@ static int bq2597x_get_work_mode(struct bq2597x *bq, int *mode)
 	else
 		*mode = BQ25970_ROLE_STDALONE;
 
-	bq_info("work mode:%s\n", *mode == BQ25970_ROLE_STDALONE ? "Standalone" :
+	bq_dbg("work mode:%s\n", *mode == BQ25970_ROLE_STDALONE ? "Standalone" :
 			(*mode == BQ25970_ROLE_SLAVE ? "Slave" : "Master"));
 	return ret;
 }

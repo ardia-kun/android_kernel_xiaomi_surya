@@ -1089,7 +1089,7 @@ static int cam_vfe_bus_acquire_wm(
 		CAM_DBG(CAM_ISP, "before width %d", rsrc_data->width);
 		align_width = ALIGNUP(rsrc_data->width, 16);
 		if (align_width != rsrc_data->width) {
-			CAM_WARN(CAM_ISP,
+			CAM_DBG(CAM_ISP,
 				"Override width %u with expected %u",
 				rsrc_data->width, align_width);
 			rsrc_data->width = align_width;

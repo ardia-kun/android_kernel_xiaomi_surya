@@ -3729,7 +3729,7 @@ static QDF_STATUS ol_txrx_wait_for_pending_tx(int timeout)
 }
 
 #ifndef QCA_WIFI_3_0_EMU
-#define SUSPEND_DRAIN_WAIT 500
+#define SUSPEND_DRAIN_WAIT 1500
 #else
 #define SUSPEND_DRAIN_WAIT 3000
 #endif

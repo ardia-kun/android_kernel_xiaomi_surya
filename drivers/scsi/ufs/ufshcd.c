@@ -10576,14 +10576,13 @@ int ufshcd_system_resume(struct ufs_hba *hba)
 	if (!hba)
 		return -EINVAL;
 
-	if (!hba->is_powered || pm_runtime_suspended(hba->dev))
-		/*
-		 * Let the runtime resume take care of resuming
-		 * if runtime suspended.
-		 */
+	if (!hba->is_powered)
 		goto out;
-	else
+	else {
 		ret = ufshcd_resume(hba, UFS_SYSTEM_PM);
+		if (!ret)
+			pm_runtime_set_active(hba->dev);
+	}
 out:
 	trace_ufshcd_system_resume(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),

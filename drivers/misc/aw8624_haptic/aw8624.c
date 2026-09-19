@@ -34,6 +34,11 @@
 #include "aw8624_reg.h"
 #include "aw8624.h"
 
+#ifdef pr_info
+#undef pr_info
+#define pr_info pr_debug
+#endif
+
 /******************************************************
  *
  * Marco

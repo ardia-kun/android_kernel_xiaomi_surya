@@ -690,7 +690,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 			/* payload[1] contains the error status for response */
 			if (payload[1] != 0) {
 				atomic_set(&this_afe.status, payload[1]);
-				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+				pr_debug("%s: cmd = 0x%x returned error = 0x%x\n",
 					__func__, payload[0], payload[1]);
 			}
 			switch (payload[0]) {
@@ -1054,7 +1054,7 @@ static int afe_apr_send_pkt(void *data, wait_queue_head_t *wait)
 					__func__);
 				ret = -ETIMEDOUT;
 			} else if (atomic_read(&this_afe.status) > 0) {
-				pr_err("%s: DSP returned error[%s]\n", __func__,
+				pr_debug("%s: DSP returned error[%s]\n", __func__,
 					adsp_err_get_err_str(atomic_read(
 					&this_afe.status)));
 				ret = adsp_err_get_lnx_err_code(
@@ -2190,7 +2190,7 @@ static int afe_send_port_topology_id(u16 port_id)
 					       q6audio_get_port_index(port_id),
 					       param_info, (u8 *) &topology);
 	if (ret) {
-		pr_err("%s: AFE set topology id enable for port 0x%x failed %d\n",
+		pr_debug("%s: AFE set topology id enable for port 0x%x failed %d\n",
 			__func__, port_id, ret);
 		goto done;
 	}
@@ -5283,13 +5283,13 @@ int afe_tas_smartamp_set_calib_data(uint32_t module_id, uint32_t param_id,
 	u8 *packed_param_data = NULL;
 	u32 packed_param_size = 0;
 	u32 single_param_size = 0;
-	pr_info("[TI-SmartPA:%s] length: %d\n", __func__, length);
+	pr_debug("[TI-SmartPA:%s] length: %d\n", __func__, length);
 	if (!data || (length < 0)) {
 		pr_err("[TI-SmartPA:%s] Invalid params\n", __func__);
 		return ret;
 	}
 
-	pr_info("[TI-SmartPA:%s] module id : 0x%x \n", __func__, module_id);
+	pr_debug("[TI-SmartPA:%s] module id : 0x%x \n", __func__, module_id);
 	if (module_id == AFE_SMARTAMP_MODULE_RX) {
 		port = TAS_RX_PORT;
 	} else if (module_id == AFE_SMARTAMP_MODULE_TX) {

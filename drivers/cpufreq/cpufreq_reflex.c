@@ -57,7 +57,7 @@
 /**************************************************************
  * Default tunables
  */
-#define CPUFREQ_REFLEX_DEFAULT_HISPEED_WINDOW_US   4000
+#define CPUFREQ_REFLEX_DEFAULT_HISPEED_WINDOW_US   20000
 #define CPUFREQ_REFLEX_DEFAULT_HISPEED_FILTER_SHIFT   1
 
 
@@ -458,7 +458,7 @@ static unsigned long rfx_blend_util(struct rfx_cpu *rfx_c,
 	if (idle_cpu(rfx_c->cpu) || pelt_util == 0)
 		return pelt_util;
 
-	hispeed_util = max_cap * rfx_c->filtered_busy_pct / 100;
+	hispeed_util = min((max_cap * 3) / 4, (max_cap * rfx_c->filtered_busy_pct) / 100);
 
 	if (hispeed_util <= pelt_util)
 		return pelt_util;

@@ -60,6 +60,7 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 	int ret = 0;
 	static uint32_t s_rdc_fix[2] = { POISON_VAL, POISON_VAL };
 	static uint32_t s_tv_fix = POISON_VAL;
+	static bool s_calib_attempted = false;
 
 #if USE_VFS
 	loff_t pos = 0;
@@ -68,12 +69,15 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 	int fd;
 #endif
 
-	if ((s_rdc_fix[0] == POISON_VAL) &&
+	if (!s_calib_attempted && (s_rdc_fix[0] == POISON_VAL) &&
 		(s_rdc_fix[1] == POISON_VAL)) {
+		s_calib_attempted = true;
 		fs = get_fs();
 		set_fs(get_ds());
 #if USE_VFS
 		file = filp_open(filepath, O_RDONLY, 0);
+		if (IS_ERR(file))
+			file = filp_open("/persist/audio/smartamp_calib.bin", O_RDONLY, 0);
 		if (!IS_ERR(file)) {
 			vfs_read(file, calib_data, MAX_STRING - 1, &pos);
 
@@ -91,8 +95,7 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 			filp_close(file, NULL);
 
 		} else {
-			pr_err("TI-SmartPA: %s: file %s open failed %p \n ",
-				__func__, filepath, file);
+			pr_err_once("TI-SmartPA: %s: calib file open failed\n", __func__);
 			ret = -EIO;
 		}
 #else
