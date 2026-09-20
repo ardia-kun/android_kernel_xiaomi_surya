@@ -253,7 +253,22 @@ jobs:
                 MESSAGE+="🔖 <b>Commit:</b> <a href=\"${COMMIT_URL}\">${CIRCLE_SHA1:0:7}</a>"
 
                 if [ -f "build.log" ]; then
-                  tail -n 100 build.log > error_tail.log
+                  {
+                    echo "=== Error summary ==="
+                    grep -cE "error:|fatal error:" build.log || true
+                    echo
+                    echo "=== Error lines ==="
+                    grep -nE "error:|fatal error:|undefined reference|No rule to make target" build.log | head -n 100 || true
+                    echo
+                    echo "=== First error context ==="
+                    grep -B5 -A20 -E "error:|fatal error:|undefined reference|No rule to make target" build.log | head -n 250 || true
+                    echo
+                    echo "=== Last error context ==="
+                    grep -B5 -A20 -E "error:|fatal error:|undefined reference|No rule to make target" build.log | tail -n 150 || true
+                    echo
+                    echo "=== Tail of build.log (last 40 lines) ==="
+                    tail -n 40 build.log
+                  } > error_tail.log
                   curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendDocument" \
                     -F chat_id="${TELEGRAM_CHAT_ID}" \
                     -F "document=@error_tail.log" \
