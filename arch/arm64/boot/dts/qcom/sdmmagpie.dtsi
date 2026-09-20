@@ -371,16 +371,21 @@
 		compatible = "sched-energy";
 
 		CPU_COST_0: core-cost0 {
+			/* Cortex-A55 (LITTLE) core energy
+			 * Recalculated with P = P_static + k*V^2*f so that the implied
+			 * voltage rises monotonically and no OPP step shows an unphysical
+			 * P ~ f^n jump. Top OPP anchored to preserve cross-cluster balance.
+			 */
 			busy-cost-data = <
 				300000	10
-				576000	18
-				768000	23
-				1017600	36
-				1248000	52
-				1324800	67
-				1497600	76
-				1612800	92
-				1708800	113
+				576000	16
+				768000	24
+				1017600	37
+				1248000	55
+				1324800	62
+				1497600	80
+				1612800	93
+				1708800	106
 				1804800	119
 			>;
 			idle-cost-data = <
@@ -389,21 +394,26 @@
 		};
 
 		CPU_COST_1: core-cost1 {
+			/* Cortex-A76 (BIG) core energy
+			 * Recalculated with P = P_static + k*V^2*f so that the implied
+			 * voltage rises monotonically and no OPP step shows an unphysical
+			 * P ~ f^n jump. Top OPP anchored to preserve cross-cluster balance.
+			 */
 			busy-cost-data = <
-				300000	166
-				652800	242
-				806400	293
-				979200	424
-				1094400	470
-				1209600	621
-				1324800	676
-				1555200	973
-				1708800	1060
-				1843200	1298
-				1939200	1362
-				2169600	1801
-				2208000	2000
-				2361600	2326
+				300000	179
+				652800	265
+				806400	334
+				979200	436
+				1094400	521
+				1209600	619
+				1324800	731
+				1555200	1002
+				1708800	1217
+				1843200	1430
+				1939200	1596
+				2169600	2045
+				2208000	2127
+				2361600	2476
 				2400000	2568
 			>;
 			idle-cost-data = <
