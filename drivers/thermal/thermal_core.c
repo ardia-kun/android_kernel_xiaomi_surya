@@ -1856,7 +1856,7 @@ static int screen_state_for_thermal_callback(struct notifier_block *nb, unsigned
 		break;
 	case MSM_DRM_BLANK_UNBLANK:
 		sm.screen_state = 1;
-		pr_warn("%s: MSM_DRM_BLANK_UNBLANK\n", __func__);
+		pr_debug("%s: MSM_DRM_BLANK_UNBLANK\n", __func__);
 		break;
 	default:
 		break;

@@ -1806,7 +1806,7 @@ static int qg_get_prop_soc_decimal(struct qpnp_qg *chip, int *val)
 
 	soc_dec = chip->sys_soc % 100;
 	soc = qg_get_prop_soc_decimal_rate(chip, &dec_rate);
-	pr_err("debug soc_dec=%d dec_rate=%d last_val=%d last_soc_dec=%d last_hal_soc=%d\n",
+	pr_debug("debug soc_dec=%d dec_rate=%d last_val=%d last_soc_dec=%d last_hal_soc=%d\n",
 			soc_dec, dec_rate, last_val, last_soc_dec, last_hal_soc);
 
 	if (soc_dec >= 0 && soc_dec < (50 - dec_rate))
@@ -2162,7 +2162,7 @@ static int qg_get_ffc_iterm_for_qg(struct qpnp_qg *chip)
                ffc_qg_iterm = LOW_TEMP_FFC_BATT_FULL_CURRENT;
        }
 
-       pr_info("ffc_batt_full_current=%d\n", ffc_qg_iterm);
+       pr_debug("ffc_batt_full_current=%d\n", ffc_qg_iterm);
 
        return ffc_qg_iterm;
 }

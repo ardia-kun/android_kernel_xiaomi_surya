@@ -1352,7 +1352,7 @@ static int bq2597x_get_work_mode(struct bq2597x *bq, int *mode)
 	else
 		*mode = BQ25970_ROLE_STDALONE;
 
-	bq_info("work mode:%s\n", *mode == BQ25970_ROLE_STDALONE ? "Standalone" :
+	pr_debug("work mode:%s\n", *mode == BQ25970_ROLE_STDALONE ? "Standalone" :
 			(*mode == BQ25970_ROLE_SLAVE ? "Slave" : "Master"));
 	return ret;
 }
@@ -1956,7 +1956,7 @@ static int bq2597x_charger_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		bq2597x_enable_charge(bq, val->intval);
 		bq2597x_check_charge_enabled(bq, &bq->charge_enabled);
-		bq_info("POWER_SUPPLY_PROP_CHARGING_ENABLED: %s\n",
+		pr_debug("POWER_SUPPLY_PROP_CHARGING_ENABLED: %s\n",
 				val->intval ? "enable" : "disable");
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -2130,7 +2130,7 @@ static void bq2597x_charger_info(struct bq2597x *bq)
 	bq2597x_get_adc_data(bq, ADC_VBAT, &vbat);
 	bq2597x_get_adc_data(bq, ADC_VBUS, &vbus);
 	bq2597x_get_adc_data(bq, ADC_IBUS, &ibus);
-	bq_info("charger info: vbat(%d), vbus(%d), ibus(%d)\n",
+	pr_debug("charger info: vbat(%d), vbus(%d), ibus(%d)\n",
 				vbat, vbus, ibus);
 }
 
@@ -2142,7 +2142,7 @@ static irqreturn_t bq2597x_charger_interrupt(int irq, void *dev_id)
 {
 	struct bq2597x *bq = dev_id;
 
-	bq_info("INT OCCURED\n");
+	pr_debug("INT OCCURED\n");
 	mutex_lock(&bq->irq_complete);
 	bq->irq_waiting = true;
 	if (!bq->resume_completed) {

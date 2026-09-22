@@ -2853,7 +2853,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	if (val->intval > chg->thermal_levels)
 		return -EINVAL;
 
-	pr_info("%s val=%d, chg->system_temp_level=%d, LctThermal=%d, lct_backlight_off= %d, IsInCall=%d \n " 
+	pr_debug("%s val=%d, chg->system_temp_level=%d, LctThermal=%d, lct_backlight_off= %d, IsInCall=%d \n " 
 		,__FUNCTION__,val->intval,chg->system_temp_level, LctThermal, lct_backlight_off, LctIsInCall);
 
 	if (LctThermal == 0) { //from therml-engine always store lvl_sel
@@ -6917,7 +6917,7 @@ int smblib_get_quick_charge_type(struct smb_charger *chg)
 			|| (pval.intval == POWER_SUPPLY_HEALTH_HOT))
 		return 0;
 
-	pr_err("[%s] real_charger_type=%d pd_verifed=%d qc_class_ab=%d\n", __func__, chg->real_charger_type, chg->pd_verifed, chg->qc_class_ab);
+	pr_debug("[%s] real_charger_type=%d pd_verifed=%d qc_class_ab=%d\n", __func__, chg->real_charger_type, chg->pd_verifed, chg->qc_class_ab);
 	/* davinic do not need to report this type */
 	if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)
 				&& chg->pd_verifed && chg->qc_class_ab) {
@@ -8364,7 +8364,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 
 	rc = smblib_is_input_present(chg, &input_present);
 
-	pr_err("input_present: %d\n", input_present);
+	pr_debug("input_present: %d\n", input_present);
 	if (rc < 0)
 		return;
 
@@ -8438,7 +8438,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 		return;
 	}
 	main_charge_type = pval.intval;
-	pr_err("main_charge_type: %d\n", main_charge_type);
+	pr_debug("main_charge_type: %d\n", main_charge_type);
 
 	/*
 	 * Add capacity compare to optimize cool charge  switch to
@@ -8475,7 +8475,7 @@ static void smblib_six_pin_batt_step_chg_work(struct work_struct *work)
 	}
 
 	ibat_ua = - pval.intval;
-	pr_err("ibat_ua: %d\n", ibat_ua);
+	pr_debug("ibat_ua: %d\n", ibat_ua);
 
 	if (main_charge_type == POWER_SUPPLY_CHARGE_TYPE_TAPER
 			&& (capacity > TAPER_BATT_CAPACITY_THR)

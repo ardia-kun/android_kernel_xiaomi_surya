@@ -1576,7 +1576,7 @@ static int smb5_usb_main_get_prop(struct power_supply *psy,
 		break;
 	}
 	if (rc < 0)
-		pr_err("Couldn't get prop %d rc = %d\n", psp, rc);
+		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
 
 	return rc;
 }
@@ -2086,7 +2086,7 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_batt_awake(chg, val);
 		break;
 	default:
-		pr_err("batt power supply prop %d not supported\n", psp);
+		pr_debug("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
 	}
 
@@ -2240,7 +2240,7 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		if(val->intval == 0)
 			break;
 		chg->reverse_charge_mode = val->intval;
-		pr_err("longcheer,%s,reverse_charge_mode=%d,reverse_state=%d\n",
+		pr_debug("longcheer,%s,reverse_charge_mode=%d,reverse_state=%d\n",
 			__func__,chg->reverse_charge_mode,chg->reverse_charge_state);
 		if(chg->reverse_charge_mode != chg->reverse_charge_state){
 			chg->reverse_charge_state = chg->reverse_charge_mode;
@@ -3974,12 +3974,12 @@ static int thermal_notifier_callback(struct notifier_block *noti, unsigned long 
 		blank = ev_data->data;
 		if (event == MSM_DRM_EARLY_EVENT_BLANK && *blank == MSM_DRM_BLANK_UNBLANK) {
 			lct_backlight_off = false;
-			pr_info("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
+			pr_debug("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
 			schedule_work(&chg->fb_notify_work);
 		}
 		else if (event == MSM_DRM_EVENT_BLANK && *blank == MSM_DRM_BLANK_POWERDOWN) {
 			lct_backlight_off = true;
-			pr_info("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
+			pr_debug("thermal_notifier lct_backlight_off:%d",lct_backlight_off);
 			schedule_work(&chg->fb_notify_work);
 		}
 	}
@@ -4051,7 +4051,7 @@ static void step_otg_chg_work(struct work_struct *work)
 	}
 
 	temp = prop.intval;
-	pr_err("longcheer ,%s:temp=%d\n",__func__,temp);
+	pr_debug("longcheer ,%s:temp=%d\n",__func__,temp);
 
 	otg_chg_current_temp = lct_get_otg_chg_current(temp);
 
@@ -4059,7 +4059,7 @@ static void step_otg_chg_work(struct work_struct *work)
 		goto exit_work;
 	else
 		chg->otg_chg_current = otg_chg_current_temp;
-	pr_err("longcheer ,%s:otg_chg_current=%d\n",__func__,chg->otg_chg_current);
+	pr_debug("longcheer ,%s:otg_chg_current=%d\n",__func__,chg->otg_chg_current);
 
 	rerun_reverse_check(chg);
 
@@ -4076,7 +4076,7 @@ static int step_otg_chg_notifier_call(struct notifier_block *nb,
 
 	if (event != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
-	pr_err("longcheer ,%s:reverse_charge_state=%d\n",__func__,chg->reverse_charge_state);
+	pr_debug("longcheer ,%s:reverse_charge_state=%d\n",__func__,chg->reverse_charge_state);
 	if(!chg->reverse_charge_state)
 		return NOTIFY_OK;
 
