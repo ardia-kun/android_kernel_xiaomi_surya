@@ -2062,7 +2062,7 @@ static void bq2597x_check_alarm_status(struct bq2597x *bq)
 	/*read to clear alarm flag*/
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0E, &flag);
 	if (!ret && flag)
-		bq_info("INT_FLAG =0x%02X\n", flag);
+		bq_dbg("INT_FLAG =0x%02X\n", flag);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0D, &stat);
 	if (!ret && stat != bq->prev_alarm) {
@@ -2430,7 +2430,7 @@ static int bq2597x_suspend(struct device *dev)
 	mutex_unlock(&bq->irq_complete);
 	bq2597x_enable_adc(bq, false);
 	cancel_delayed_work_sync(&bq->monitor_work);
-	bq_err("Suspend successfully!");
+	bq_info("Suspend successfully!");
 
 	return 0;
 }
@@ -2466,7 +2466,7 @@ static int bq2597x_resume(struct device *dev)
 
 	bq2597x_enable_adc(bq, true);
 	power_supply_changed(bq->fc2_psy);
-	bq_err("Resume successfully!");
+	bq_info("Resume successfully!");
 
 	return 0;
 }

@@ -1,0 +1,28 @@
+{
+ "device": "Poco X3 NFC (surya), SM7150/sdmmagpie, kernel 4.14.357, LineageOS 22.2",
+ "window": "21196.8..21608.8 = 412 s",
+ "suspend_cycles": 153,
+ "intervals": {
+  "<0.5s": 134,
+  "0.5-5s": 12,
+  "5-40s": 3,
+  ">40s": 3
+ },
+ "root_causes": {
+  "suspend_thrash": "AP WoW traffic (126x 'WLAN triggered wakeup: BPF_ALLOW') keeps waking device; each noirq attempt aborts -> re-suspend loop. 10x icnss -EAGAIN.",
+  "noirq_abort": "wlan_hdd_bus_suspend_noirq returns -EAGAIN on target initial wakeup -> icnss_pm_suspend_noirq -11 -> 'noirq suspend of devices failed'",
+  "cpu_hotplug": "7x 'Wakeup pending. Abort CPU freeze' -> 'Disabling non-boot cpus failed'",
+  "touch": "2x 'Pending Wakeup Sources: event0' (touchscreen) aborting suspend",
+  "vidc": "CONFIG_DEBUG_FS is NOT set -> debugfs_create_dir returns ERR_PTR(-ENODEV) -> code logs VIDC_ERR 'Failed to create debugfs' (real handling bug)",
+  "binder": "binder_alloc_new_buf returns -ENOSPC(-28) on async buffer full -> logged as failed transaction (BR_FAILED_REPLY 29201)"
+ },
+ "log_level_bugs": [
+  "bq2597x: bq_err() used for 'Suspend/Resume successfully!' (success at ERROR level) x154",
+  "wl2866d: pr_err('%s',__func__) in suspend/resume x154",
+  "smb5-lib: pr_err for normal 'usb online=0' no-charger status x643",
+  "aw8624: pr_info every 2.5ms retry in haptic_stop x207",
+  "fair.c: printk_deferred max cpu_capacity under CONFIG_SCHED_DEBUG, no ratelimit x871",
+  "wakeup_reason: pr_info 'Resume cause unknown' x132",
+  "wlan_hdd_inc_suspend_stats prints stats TWICE (before+after increment) x20"
+ ]
+}

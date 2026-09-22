@@ -988,9 +988,19 @@ int adm_set_pp_params(int port_id, int copp_idx,
 		goto done;
 	}
 	if (atomic_read(copp_stat) > 0) {
-		pr_err("%s: DSP returned error[%s]\n", __func__,
-		       adsp_err_get_err_str(atomic_read(copp_stat)));
-		ret = adsp_err_get_lnx_err_code(atomic_read(copp_stat));
+		int st = atomic_read(copp_stat);
+		/*
+		 * ADSP_EUNSUPPORTED/ADSP_EBADPARAM means the requested
+		 * post-processing block does not exist on this port; that
+		 * is an expected negative answer, not a driver fault.
+		 */
+		if (st == ADSP_EUNSUPPORTED || st == ADSP_EBADPARAM)
+			pr_debug("%s: PP params not supported[%s]\n",
+				 __func__, adsp_err_get_err_str(st));
+		else
+			pr_err("%s: DSP returned error[%s]\n", __func__,
+			       adsp_err_get_err_str(st));
+		ret = adsp_err_get_lnx_err_code(st);
 		goto done;
 	}
 
@@ -1613,8 +1623,13 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			}
 
 			if (payload[1] != 0) {
-				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
-					__func__, payload[0], payload[1]);
+				if (payload[1] == ADSP_EUNSUPPORTED ||
+				    payload[1] == ADSP_EBADPARAM)
+					pr_debug("%s: cmd = 0x%x not supported = 0x%x\n",
+						 __func__, payload[0], payload[1]);
+				else
+					pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+					       __func__, payload[0], payload[1]);
 			}
 			switch (payload[0]) {
 			case ADM_CMD_SET_PP_PARAMS_V5:

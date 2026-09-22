@@ -3799,18 +3799,16 @@ int wma_roam_stats_event_handler(WMA_HANDLE handle, uint8_t *event,
 	}
 
 	rem_len -= num_tlv * sizeof(wmi_roam_scan_info);
-	if (rem_len < num_tlv * sizeof(wmi_roam_result)) {
-		wma_err_rl("Invalid roam result data");
-		goto err;
-	}
 
-	rem_len -= num_tlv * sizeof(wmi_roam_result);
-	if (rem_len < (num_tlv * sizeof(wmi_roam_neighbor_report_info))) {
-		wma_err_rl("Invalid roam neighbor report data");
-		goto err;
-	}
-
-	rem_len -= num_tlv * sizeof(wmi_roam_neighbor_report_info);
+	/*
+	 * The buffer is laid out in WMITLV_TABLE_WMI_ROAM_STATS_EVENTID
+	 * order: trigger_reason, scan_info, scan_chan_info, ap_info,
+	 * result, neighbor_report_info, neighbor_report_chan_info, ...
+	 * Validate in that same order, otherwise subtracting the result/
+	 * neighbor arrays (which are counted by num_tlv and may be shorter)
+	 * before ap_info makes the ap_info check fail on valid events and
+	 * the whole roam stats event is dropped.
+	 */
 	if (rem_len < (param_buf->num_roam_scan_chan_info *
 		       sizeof(wmi_roam_scan_channel_info))) {
 		wma_err_rl("Invalid roam chan data num_tlv:%d",
@@ -3829,6 +3827,19 @@ int wma_roam_stats_event_handler(WMA_HANDLE handle, uint8_t *event,
 	}
 
 	rem_len -= param_buf->num_roam_ap_info * sizeof(wmi_roam_ap_info);
+
+	if (rem_len < num_tlv * sizeof(wmi_roam_result)) {
+		wma_err_rl("Invalid roam result data");
+		goto err;
+	}
+
+	rem_len -= num_tlv * sizeof(wmi_roam_result);
+	if (rem_len < (num_tlv * sizeof(wmi_roam_neighbor_report_info))) {
+		wma_err_rl("Invalid roam neighbor report data");
+		goto err;
+	}
+
+	rem_len -= num_tlv * sizeof(wmi_roam_neighbor_report_info);
 	if (rem_len < (param_buf->num_roam_neighbor_report_chan_info *
 		       sizeof(wmi_roam_neighbor_report_channel_info))) {
 		wma_err_rl("Invalid roam neigb rpt chan data num_tlv:%d",

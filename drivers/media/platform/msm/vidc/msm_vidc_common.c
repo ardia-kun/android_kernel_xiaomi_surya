@@ -196,6 +196,14 @@ int msm_comm_hal_to_v4l2(int id, int value)
 			goto unknown_value;
 		}
 	case V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL:
+		/*
+		 * Firmware can report the HEVC level without the tier prefix
+		 * (e.g. 0x10/0x20/0x100 for main-tier 3.1/4/5.1). Normalize to
+		 * the main-tier encoding the table below expects so the control
+		 * readback maps correctly instead of returning -EINVAL.
+		 */
+		if (value && !(value & 0xF0000000))
+			value |= 0x10000000;
 	switch (value) {
 	case HAL_HEVC_MAIN_TIER_LEVEL_1:
 		return V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1;

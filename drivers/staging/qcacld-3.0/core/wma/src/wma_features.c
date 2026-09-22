@@ -1595,8 +1595,8 @@ static void wma_inc_wow_stats(t_wma_handle *wma,
 
 static void wma_wow_stats_display(struct wake_lock_stats *stats)
 {
-	WMA_LOGA("WLAN wake reason counters:");
-	WMA_LOGA("uc:%d bc:%d v4_mc:%d v6_mc:%d ra:%d ns:%d na:%d "
+	wma_debug("WLAN wake reason counters:");
+	wma_debug("uc:%d bc:%d v4_mc:%d v6_mc:%d ra:%d ns:%d na:%d "
 		 "icmp:%d icmpv6:%d",
 		 stats->ucast_wake_up_count,
 		 stats->bcast_wake_up_count,
@@ -1608,7 +1608,7 @@ static void wma_wow_stats_display(struct wake_lock_stats *stats)
 		 stats->icmpv4_count,
 		 stats->icmpv6_count);
 
-	WMA_LOGA("assoc:%d disassoc:%d assoc_resp:%d reassoc:%d "
+	wma_debug("assoc:%d disassoc:%d assoc_resp:%d reassoc:%d "
 		 "reassoc_resp:%d auth:%d deauth:%d action:%d",
 		 stats->mgmt_assoc,
 		 stats->mgmt_disassoc,
@@ -1619,7 +1619,7 @@ static void wma_wow_stats_display(struct wake_lock_stats *stats)
 		 stats->mgmt_deauth,
 		 stats->mgmt_action);
 
-	WMA_LOGA("pno_match:%d pno_complete:%d gscan:%d "
+	wma_debug("pno_match:%d pno_complete:%d gscan:%d "
 		 "low_rssi:%d rssi_breach:%d oem:%d scan_11d:%d",
 		 stats->pno_match_wake_up_count,
 		 stats->pno_complete_wake_up_count,
@@ -2710,14 +2710,14 @@ static void wma_wake_event_log_reason(t_wma_handle *wma,
 	/* "Unspecified" means APPS triggered wake, else firmware triggered */
 	if (wake_info->wake_reason != WOW_REASON_UNSPECIFIED) {
 		vdev = &wma->interfaces[wake_info->vdev_id];
-		WMA_LOGA("WLAN triggered wakeup: %s (%d), vdev: %d (%s)",
+		wma_debug("WLAN triggered wakeup: %s (%d), vdev: %d (%s)",
 			 wma_wow_wake_reason_str(wake_info->wake_reason),
 			 wake_info->wake_reason,
 			 wake_info->vdev_id,
 			 wma_vdev_type_str(vdev->type));
 		wma_debug_assert_page_fault_wakeup(wake_info->wake_reason);
 	} else if (!wmi_get_runtime_pm_inprogress(wma->wmi_handle)) {
-		WMA_LOGA("Non-WLAN triggered wakeup: %s (%d)",
+		wma_debug("Non-WLAN triggered wakeup: %s (%d)",
 			 wma_wow_wake_reason_str(wake_info->wake_reason),
 			 wake_info->wake_reason);
 	}

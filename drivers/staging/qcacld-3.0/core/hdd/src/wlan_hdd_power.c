@@ -1752,7 +1752,6 @@ static void wlan_hdd_print_suspend_fail_stats(struct hdd_context *hdd_ctx)
 void wlan_hdd_inc_suspend_stats(struct hdd_context *hdd_ctx,
 				enum suspend_fail_reason reason)
 {
-	wlan_hdd_print_suspend_fail_stats(hdd_ctx);
 	hdd_ctx->suspend_resume_stats.suspend_fail[reason]++;
 	wlan_hdd_print_suspend_fail_stats(hdd_ctx);
 }

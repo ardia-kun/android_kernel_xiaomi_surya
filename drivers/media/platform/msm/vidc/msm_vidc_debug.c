@@ -227,6 +227,10 @@ struct dentry *msm_vidc_debugfs_init_drv(void)
 	bool ok = false;
 	struct dentry *dir = NULL;
 
+	/* debugfs is an optional debug facility; not an error if disabled */
+	if (!debugfs_initialized())
+		return NULL;
+
 	dir = debugfs_create_dir("msm_vidc", NULL);
 	if (IS_ERR_OR_NULL(dir)) {
 		dir = NULL;
@@ -277,6 +281,9 @@ struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 {
 	struct dentry *dir = NULL;
 	char debugfs_name[MAX_DEBUGFS_NAME];
+
+	if (!debugfs_initialized())
+		return NULL;
 
 	if (!core) {
 		dprintk(VIDC_ERR, "Invalid params, core: %pK\n", core);
@@ -487,6 +494,9 @@ struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
 	struct dentry *dir = NULL, *info = NULL;
 	char debugfs_name[MAX_DEBUGFS_NAME];
 	struct core_inst_pair *idata = NULL;
+
+	if (!debugfs_initialized())
+		return NULL;
 
 	if (!inst) {
 		dprintk(VIDC_ERR, "Invalid params, inst: %pK\n", inst);

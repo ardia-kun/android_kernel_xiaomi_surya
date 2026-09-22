@@ -8,6 +8,8 @@
 #define USE_VFS			1
 #define CODEC_CONTROL		1
 #define POISON_VAL		0xDEADDEAD
+/* Set when the optional speaker calibration file is not present */
+static bool s_calib_missing;
 #define MAX_STRING		(300)
 
 /*Master Control to Bypass the Smartamp TI CAPIv2 module*/
@@ -91,8 +93,17 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix, int cha
 			filp_close(file, NULL);
 
 		} else {
-			pr_err("TI-SmartPA: %s: file %s open failed %p \n ",
-				__func__, filepath, file);
+			/*
+			 * The calibration file is optional. Cache the failure so a
+			 * missing file is not re-opened (and re-logged) on every
+			 * smartamp enable; a one-time ratelimited notice is enough.
+			 */
+			pr_info_ratelimited("TI-SmartPA: %s: calibration file %s not available\n",
+				__func__, filepath);
+			s_calib_missing = true;
+			s_rdc_fix[0] = 0;
+			s_rdc_fix[1] = 0;
+			s_tv_fix = 0;
 			ret = -EIO;
 		}
 #else
@@ -647,8 +658,12 @@ static int tas25xx_smartamp_enable_set(struct snd_kcontrol *pKcontrol,
 			&calibration_data[1], number_of_ch);
 
 	if (ret) {
-		pr_err("[Smartamp:%s] unable to get the calibration data = 0x%x\n",
-			__func__, ret);
+		if (s_calib_missing)
+			pr_debug("[Smartamp:%s] no calibration data, using defaults\n",
+				__func__);
+		else
+			pr_err("[Smartamp:%s] unable to get the calibration data = 0x%x\n",
+				__func__, ret);
 		//TODO: Ignore the calibration read error
 		ret = 0;
 	} else {

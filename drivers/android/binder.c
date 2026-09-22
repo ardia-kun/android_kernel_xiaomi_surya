@@ -3816,11 +3816,21 @@ err_invalid_target_handle:
 		binder_dec_node_tmpref(target_node);
 	}
 
-	binder_debug(BINDER_DEBUG_FAILED_TRANSACTION,
-		     "%d:%d transaction failed %d/%d, size %lld-%lld line %d\n",
-		     proc->pid, thread->pid, return_error, return_error_param,
-		     (u64)tr->data_size, (u64)tr->offsets_size,
-		     return_error_line);
+	/*
+	 * -ENOSPC on an asynchronous transaction is ordinary backpressure
+	 * (the target's async buffer space is full) and is expected; keep it
+	 * out of the default log level. Real failures still log below.
+	 */
+	if (return_error_param == -ENOSPC)
+		binder_debug(BINDER_DEBUG_FREE_BUFFER,
+			     "%d:%d async transaction dropped, no buffer space, size %lld\n",
+			     proc->pid, thread->pid, (u64)tr->data_size);
+	else
+		binder_debug(BINDER_DEBUG_FAILED_TRANSACTION,
+			     "%d:%d transaction failed %d/%d, size %lld-%lld line %d\n",
+			     proc->pid, thread->pid, return_error, return_error_param,
+			     (u64)tr->data_size, (u64)tr->offsets_size,
+			     return_error_line);
 
 	{
 		struct binder_transaction_log_entry *fe;

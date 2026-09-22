@@ -643,14 +643,14 @@ static int aw8624_haptic_stop(struct aw8624 *aw8624)
 			return 0;
 		} else if (reg_val <=3){//bringup
 			usleep_range(2000,2500);
-			pr_info("%s bringup,reg glb_state=0x%02x\n",__func__, reg_val);
+			pr_debug("%s bringup,reg glb_state=0x%02x\n",__func__, reg_val);
 		} else {//playing
 			if (go_disable_times == 0){//go->0 just set one time
 				aw8624_haptic_play_go(aw8624, false);
 				go_disable_times = 1;
 			}
 			usleep_range(2000,2500);
-			pr_info("%s playing,reg glb_state=0x%02x\n",__func__, reg_val);
+			pr_debug("%s playing,reg glb_state=0x%02x\n",__func__, reg_val);
 		}
 	}
 
@@ -993,7 +993,7 @@ static int aw8624_haptic_ram_vbat_comp(struct aw8624 *aw8624, bool flag)
 			temp_gain =
 			    aw8624->gain * AW8624_VBAT_REFER / aw8624->vbat;
 			//Daniel 20200624 modify start
-			pr_info("%s base_gain=%d, cal_gain=%d, adc_vat=%d\n",
+			pr_debug("%s base_gain=%d, cal_gain=%d, adc_vat=%d\n",
 					__func__, aw8624->gain, temp_gain, aw8624->vbat);
 			//Daniel 20200624 modify end
 			if (temp_gain >
