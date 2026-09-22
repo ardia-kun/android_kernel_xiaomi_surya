@@ -3,6 +3,7 @@ config ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO
 	select CRYPTO_LZO
+	select CRYPTO_ZSTD
 	default n
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
@@ -14,6 +15,54 @@ config ZRAM
 	  disks and maybe many more.
 
 	  See Documentation/blockdev/zram.txt for more information.
+
+choice
+	prompt "Default compressor"
+	default ZRAM_DEF_COMP_ZSTD
+	depends on ZRAM
+	help
+	  Default compressor to use for zram devices. This can still be
+	  overridden at runtime via /sys/block/zramX/comp_algorithm before
+	  the device is initialised.
+
+	  zstd generally offers a better compression ratio than lzo/lz4 at
+	  a still-reasonable speed, which makes it a good default for the
+	  swap use case.
+
+	config ZRAM_DEF_COMP_LZO
+		bool "lzo"
+		select CRYPTO_LZO
+
+	config ZRAM_DEF_COMP_LZ4
+		bool "lz4"
+		select CRYPTO_LZ4
+
+	config ZRAM_DEF_COMP_LZ4HC
+		bool "lz4hc"
+		select CRYPTO_LZ4HC
+
+	config ZRAM_DEF_COMP_DEFLATE
+		bool "deflate"
+		select CRYPTO_DEFLATE
+
+	config ZRAM_DEF_COMP_842
+		bool "842"
+		select CRYPTO_842
+
+	config ZRAM_DEF_COMP_ZSTD
+		bool "zstd"
+		select CRYPTO_ZSTD
+endchoice
+
+config ZRAM_DEF_COMP
+	string
+	default "lzo" if ZRAM_DEF_COMP_LZO
+	default "lz4" if ZRAM_DEF_COMP_LZ4
+	default "lz4hc" if ZRAM_DEF_COMP_LZ4HC
+	default "deflate" if ZRAM_DEF_COMP_DEFLATE
+	default "842" if ZRAM_DEF_COMP_842
+	default "zstd" if ZRAM_DEF_COMP_ZSTD
+	default "lzo"
 
 config ZRAM_DEDUP
 	bool "Deduplication support for ZRAM data"
