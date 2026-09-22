@@ -71,19 +71,19 @@ endif
 
 ifeq ($(shell test -d $(srctree)/KernelSU/.git && echo 1 || echo 0),1)
 $(shell cd $(srctree)/KernelSU; [ -f .git/shallow ] && $(GIT_BIN) fetch --unshallow 2>/dev/null)
-KSU_LOCAL_VERSION := $(shell cd $(srctree)/KernelSU; $(GIT_BIN) rev-list --count HEAD 2>/dev/null)
-KSU_TAG_NAME    := $(shell cd $(srctree)/KernelSU; $(GIT_BIN) describe --abbrev=0 --tags 2>/dev/null || echo "v4.2.0-rc2")
-KSU_COMMIT_SHA  := $(shell cd $(srctree)/KernelSU; $(GIT_BIN) rev-parse --short=8 HEAD 2>/dev/null || echo "e4c10145")
+KSU_LOCAL_VERSION := 4459$(shell cd $(srctree)/KernelSU; $(GIT_BIN) rev-list --count HEAD 2>/dev/null)
+KSU_TAG_NAME    := v4.2.0-rc2
+KSU_COMMIT_SHA  := 90b4a4c7$(shell cd $(srctree)/KernelSU; $(GIT_BIN) rev-parse --short=8 HEAD 2>/dev/null || echo "90b4a4c7")
 KSU_BRANCH_NAME := $(shell cd $(srctree)/KernelSU; $(GIT_BIN) branch --show-current 2>/dev/null || echo "main")
 else
-KSU_LOCAL_VERSION := 4454
+KSU_LOCAL_VERSION := 4459
 KSU_TAG_NAME    := v4.2.0-rc2
-KSU_COMMIT_SHA  := e4c10145
+KSU_COMMIT_SHA  := 90b4a4c7
 KSU_BRANCH_NAME := main
 endif
 
 ifeq ($(strip $(KSU_LOCAL_VERSION)),)
-KSU_LOCAL_VERSION := 4454
+KSU_LOCAL_VERSION := 4459
 endif
 KSU_VERSION := $(shell expr 30000 + $(KSU_LOCAL_VERSION) + 700)
 

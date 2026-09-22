@@ -73,7 +73,7 @@ jobs:
               python3 python-is-python3 \
               binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
               gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-              ccache cpio jq
+              ccache cpio jq rsync
 
       - restore_cache:
           name: "Restore ccache"
@@ -107,6 +107,12 @@ jobs:
             fi
             CLANG_VER=$("$CLANG_BIN" --version | head -n 1)
             echo "Compiler: ${CLANG_VER}"
+
+      - run:
+          name: "Auto-update ReSukiSU to latest version"
+          command: |
+            chmod +x scripts/update_resukisu.sh
+            ./scripts/update_resukisu.sh
 
       - run:
           name: "Generate kernel defconfig"
@@ -238,6 +244,9 @@ jobs:
                 CAPTION+="📱 <b>Device:</b> POCO X3 NFC (${DEVICE_CODENAME})"$'\n'
                 CAPTION+="🌿 <b>Branch:</b> <code>${CIRCLE_BRANCH}</code>"$'\n'
                 CAPTION+="🔖 <b>Commit:</b> <a href=\"${COMMIT_URL}\">${CIRCLE_SHA1:0:7}</a>"$'\n'
+                if [ -n "${RESUKISU_VERSION}" ]; then
+                  CAPTION+="🛡️ <b>ReSukiSU:</b> <code>${RESUKISU_VERSION}</code>"$'\n'
+                fi
                 CAPTION+="📦 <b>Package:</b> <code>${ZIP_NAME}</code> (${ZIP_SIZE})"$'\n'
                 CAPTION+="🔑 <b>MD5:</b> <code>${MD5}</code>"
 

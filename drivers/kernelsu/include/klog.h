@@ -18,9 +18,9 @@
 #define pr_fmt(fmt) "KernelSU: " fmt
 #endif
 
+#endif
+
 #ifdef pr_info
 #undef pr_info
 #define pr_info(fmt, ...) pr_debug(fmt, ##__VA_ARGS__)
-#endif
-
 #endif
