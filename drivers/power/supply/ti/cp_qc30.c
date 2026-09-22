@@ -54,10 +54,6 @@
 
 #include "cp_qc30.h"
 
-#ifdef pr_debug
-#undef pr_debug
-//#define pr_debug pr_err
-#endif
 
 #define BATT_MAX_CHG_VOLT		4400
 #define BATT_FAST_CHG_CURR		5400
@@ -695,8 +691,7 @@ static int cp_flash2_charge(unsigned int port)
 	pr_debug("is_temp_out_fc2_range:%d\n", pm_state.is_temp_out_fc2_range);
 
 	if (pm_state.bq2597x.bat_ovp_fault || pm_state.bq2597x.bat_ocp_fault || pm_state.bq2597x.bus_ovp_fault || pm_state.bq2597x.bus_ocp_fault) {
-		pr_err("bq2597x bat_ovp_fault: %d,bat_ocp_fault =%d,bus_ovp_fault=%d,bus_ocp_fault=%d,bat_ucp_alarm=%d,vbat_reg=%d
-",
+		pr_err("bq2597x bat_ovp_fault: %d,bat_ocp_fault =%d,bus_ovp_fault=%d,bus_ocp_fault=%d,bat_ucp_alarm=%d,vbat_reg=%d\n",
 				pm_state.bq2597x.bat_ovp_fault,
 				pm_state.bq2597x.bat_ocp_fault,
 				pm_state.bq2597x.bus_ovp_fault,
@@ -704,8 +699,7 @@ static int cp_flash2_charge(unsigned int port)
 				pm_state.bq2597x.bat_ucp_alarm,
 				pm_state.bq2597x.vbat_reg);
 	} else {
-		pr_debug("bq2597x bat_ovp_fault: %d,bat_ocp_fault =%d,bus_ovp_fault=%d,bus_ocp_fault=%d,bat_ucp_alarm=%d,vbat_reg=%d
-",
+		pr_debug("bq2597x bat_ovp_fault: %d,bat_ocp_fault =%d,bus_ovp_fault=%d,bus_ocp_fault=%d,bat_ucp_alarm=%d,vbat_reg=%d\n",
 				pm_state.bq2597x.bat_ovp_fault,
 				pm_state.bq2597x.bat_ocp_fault,
 				pm_state.bq2597x.bus_ovp_fault,
@@ -759,8 +753,7 @@ static int cp_flash2_charge(unsigned int port)
 		}
 
 	if (pm_state.bq2597x.bus_ocp_alarm || pm_state.bq2597x.bus_ovp_alarm) {
-		pr_err("bus_ocp_alarm = %d, bus_ovp_alarm=%d,vbat_reg=%d, vbat_volt=%d, ibat_curr=%d, ibus_curr=%d
-",
+		pr_err("bus_ocp_alarm = %d, bus_ovp_alarm=%d,vbat_reg=%d, vbat_volt=%d, ibat_curr=%d, ibus_curr=%d\n",
 			pm_state.bq2597x.bus_ocp_alarm,
 			pm_state.bq2597x.bus_ovp_alarm,
 			pm_state.bq2597x.vbat_reg,
@@ -768,8 +761,7 @@ static int cp_flash2_charge(unsigned int port)
 			pm_state.bq2597x.ibat_curr,
 			pm_state.bq2597x.ibus_curr);
 	} else {
-		pr_debug("bus_ocp_alarm = %d, bus_ovp_alarm=%d,vbat_reg=%d, vbat_volt=%d, ibat_curr=%d, ibus_curr=%d
-",
+		pr_debug("bus_ocp_alarm = %d, bus_ovp_alarm=%d,vbat_reg=%d, vbat_volt=%d, ibat_curr=%d, ibus_curr=%d\n",
 			pm_state.bq2597x.bus_ocp_alarm,
 			pm_state.bq2597x.bus_ovp_alarm,
 			pm_state.bq2597x.vbat_reg,
