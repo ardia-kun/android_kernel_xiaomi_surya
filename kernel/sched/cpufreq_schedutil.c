@@ -27,6 +27,7 @@ struct sugov_tunables {
 	unsigned int		down_rate_limit_us;
 	unsigned int hispeed_load;
 	unsigned int hispeed_freq;
+	unsigned int freq_boost_pct;
 	bool pl;
 };
 
@@ -267,7 +268,10 @@ static void sugov_update_commit(struct sugov_policy *sg_policy, u64 time,
  *
  * next_freq = C * curr_freq * util_raw / max
  *
- * Take C = 1.25 for the frequency tipping point at (util / max) = 0.8.
+ * C is configurable via the freq_boost_pct tunable (default +20%, tipping
+ * point at (util / max) ~= 0.83). The old hardcoded C = 1.25 made small
+ * interactive wakes (e.g. a single touch event boosted by UTIL_EST) jump
+ * straight to the maximum frequency.
  *
  * The lowest driver-supported frequency which is equal or greater than the raw
  * next_freq (as calculated above) is returned, subject to policy min/max and
@@ -279,8 +283,12 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned int freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
+	u64 tmp;
 
-	freq = (freq + (freq >> 2)) * util / max;
+	/* freq = freq * (100 + boost_pct) / 100 * util / max, in 64-bit */
+	tmp = (u64)freq * (100 + sg_policy->tunables->freq_boost_pct) * util;
+	do_div(tmp, (u64)max * 100);
+	freq = (unsigned int)tmp;
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
 
 	if (freq == sg_policy->cached_raw_freq && sg_policy->next_freq != UINT_MAX)
@@ -382,6 +390,14 @@ static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
 
 #define NL_RATIO 75
 #define DEFAULT_HISPEED_LOAD 90
+/*
+ * Default headroom applied on top of the proportional util/max term.
+ * The mainline value was a hardcoded 1.25 (i.e. 25%); on this platform that
+ * made the smallest interactive wake (touch -> RenderThread/SurfaceFlinger
+ * enqueue, util_est already high) resolve to cpuinfo.max_freq. 20% keeps the
+ * ramp-up responsive without pinning the cluster at fmax on every tap.
+ */
+#define DEFAULT_FREQ_BOOST_PCT 20
 static void sugov_walt_adjust(struct sugov_cpu *sg_cpu, unsigned long *util,
 			      unsigned long *max)
 {
@@ -748,6 +764,28 @@ static ssize_t hispeed_freq_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
+static ssize_t freq_boost_pct_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->freq_boost_pct);
+}
+
+static ssize_t freq_boost_pct_store(struct gov_attr_set *attr_set,
+				    const char *buf, size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	unsigned int val;
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
+
+	/* 0% = strictly proportional; >50% reintroduces fmax jumps on wakes */
+	tunables->freq_boost_pct = min(val, 100U);
+
+	return count;
+}
+
 static ssize_t pl_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
@@ -770,6 +808,7 @@ static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr hispeed_load = __ATTR_RW(hispeed_load);
 static struct governor_attr hispeed_freq = __ATTR_RW(hispeed_freq);
+static struct governor_attr freq_boost_pct = __ATTR_RW(freq_boost_pct);
 static struct governor_attr pl = __ATTR_RW(pl);
 
 static struct attribute *sugov_attributes[] = {
@@ -777,6 +816,7 @@ static struct attribute *sugov_attributes[] = {
 	&down_rate_limit_us.attr,
 	&hispeed_load.attr,
 	&hispeed_freq.attr,
+	&freq_boost_pct.attr,
 	&pl.attr,
 	NULL
 };
@@ -903,6 +943,7 @@ static void sugov_tunables_save(struct cpufreq_policy *policy,
 	cached->pl = tunables->pl;
 	cached->hispeed_load = tunables->hispeed_load;
 	cached->hispeed_freq = tunables->hispeed_freq;
+	cached->freq_boost_pct = tunables->freq_boost_pct;
 	cached->up_rate_limit_us = tunables->up_rate_limit_us;
 	cached->down_rate_limit_us = tunables->down_rate_limit_us;
 }
@@ -925,6 +966,13 @@ static void sugov_tunables_restore(struct cpufreq_policy *policy)
 	tunables->pl = cached->pl;
 	tunables->hispeed_load = cached->hispeed_load;
 	tunables->hispeed_freq = cached->hispeed_freq;
+	/*
+	 * Tunables cached by an older kernel (or before a store ever happened)
+	 * have freq_boost_pct == 0; 0 silently disables all headroom.
+	 * Fall back to the compiled default instead.
+	 */
+	if (cached->freq_boost_pct)
+		tunables->freq_boost_pct = cached->freq_boost_pct;
 	tunables->up_rate_limit_us = cached->up_rate_limit_us;
 	tunables->down_rate_limit_us = cached->down_rate_limit_us;
 	update_min_rate_limit_ns(sg_policy);
@@ -978,6 +1026,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 				cpufreq_policy_transition_delay_us(policy);
 	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	tunables->hispeed_freq = 0;
+	tunables->freq_boost_pct = DEFAULT_FREQ_BOOST_PCT;
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
