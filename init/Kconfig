@@ -1063,6 +1063,14 @@ config SCHED_BORE
 
 	  If unsure, say Y here.
 
+config WA_VC_LIMITER
+	bool "WhatsApp Video Call CPU Limiter"
+	depends on SMP
+	default y
+	help
+	  Automatically restricts CPU execution to little cores (CPU 0-5)
+	  during WhatsApp video calls to prevent overheating and battery drain.
+
 config SCHED_AUTOGROUP
 	bool "Automatic process group scheduling"
 	select CGROUPS

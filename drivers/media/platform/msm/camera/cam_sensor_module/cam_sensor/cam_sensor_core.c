@@ -12,6 +12,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/wa_vc_limiter.h>
 #include <cam_sensor_cmn_header.h>
 #include "cam_sensor_core.h"
 #include "cam_sensor_util.h"
@@ -1385,6 +1386,8 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 	if (rc < 0)
 		CAM_ERR(CAM_SENSOR, "cci_init failed: rc: %d", rc);
 
+	wavc_notify_camera_state(true);
+
 	return rc;
 }
 
@@ -1411,6 +1414,8 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 		CAM_ERR(CAM_SENSOR, "power down the core is failed:%d", rc);
 		return rc;
 	}
+
+	wavc_notify_camera_state(false);
 
 	if (s_ctrl->bob_pwm_switch) {
 		rc = cam_sensor_bob_pwm_mode_switch(soc_info,

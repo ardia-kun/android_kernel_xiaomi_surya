@@ -12,6 +12,7 @@
 #include "tune.h"
 
 #include "walt.h"
+#include <linux/wa_vc_limiter.h>
 
 int sched_rr_timeslice = RR_TIMESLICE;
 int sysctl_sched_rr_timeslice = (MSEC_PER_SEC * RR_TIMESLICE) / HZ;
@@ -1572,6 +1573,9 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	rcu_read_unlock();
 
 out:
+#ifdef CONFIG_WA_VC_LIMITER
+	cpu = wavc_filter_target_cpu(p, cpu);
+#endif
 	return cpu;
 }
 

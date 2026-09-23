@@ -42,6 +42,7 @@
 #include "sched.h"
 #include "tune.h"
 #include "walt.h"
+#include <linux/wa_vc_limiter.h>
 
 #ifdef CONFIG_SMP
 static inline bool task_fits_max(struct task_struct *p, int cpu);
@@ -8831,6 +8832,11 @@ pick_cpu:
 #ifdef CONFIG_NO_HZ_COMMON
 	if (nohz_kick_needed(cpu_rq(new_cpu), true))
 		nohz_balancer_kick(true);
+#endif
+
+#ifdef CONFIG_WA_VC_LIMITER
+	wavc_notify_task_waking(p);
+	new_cpu = wavc_filter_target_cpu(p, new_cpu);
 #endif
 
 	return new_cpu;

@@ -18,6 +18,7 @@
 #include <linux/interrupt.h>	/* request_irq() */
 #include <linux/memory.h>	/* memset */
 #include <linux/vmalloc.h>
+#include <linux/mm.h>		/* kvzalloc(), kvfree() */
 
 #include "sps_bam.h"
 #include "bam.h"
