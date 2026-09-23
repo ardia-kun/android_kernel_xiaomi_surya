@@ -1121,16 +1121,13 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 		else
 			bam_pipe_exit(&dev->base, pipe_index, dev->props.ee);
 		if (pipe->sys.desc_cache != NULL) {
-			u32 size = pipe->num_descs * sizeof(void *);
+			if (dev->props.options & SPS_BAM_HOLD_MEM) {
+				u32 size = pipe->num_descs * sizeof(void *);
 
-			if (pipe->desc_size + size <= PAGE_SIZE) {
-				if (dev->props.options & SPS_BAM_HOLD_MEM)
-					memset(pipe->sys.desc_cache, 0,
-						pipe->desc_size + size);
-				else
-					kfree(pipe->sys.desc_cache);
+				memset(pipe->sys.desc_cache, 0,
+					pipe->desc_size + size);
 			} else {
-				vfree(pipe->sys.desc_cache);
+				kvfree(pipe->sys.desc_cache);
 			}
 			pipe->sys.desc_cache = NULL;
 		}
@@ -1265,43 +1262,28 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 		/* Allocate both descriptor cache and user pointer array */
 		size = pipe->num_descs * sizeof(void *);
 
-		if (pipe->desc_size + size <= PAGE_SIZE) {
-			if ((dev->props.options &
-						SPS_BAM_HOLD_MEM)) {
-				if (dev->desc_cache_pointers[pipe_index]) {
-					pipe->sys.desc_cache =
-						dev->desc_cache_pointers
-							[pipe_index];
-				} else {
-					pipe->sys.desc_cache =
-						kzalloc(pipe->desc_size + size,
-								GFP_KERNEL);
-					dev->desc_cache_pointers[pipe_index] =
-							pipe->sys.desc_cache;
-				}
+		if ((dev->props.options & SPS_BAM_HOLD_MEM)) {
+			if (dev->desc_cache_pointers[pipe_index]) {
+				pipe->sys.desc_cache =
+					dev->desc_cache_pointers
+						[pipe_index];
 			} else {
 				pipe->sys.desc_cache =
-						kzalloc(pipe->desc_size + size,
-							GFP_KERNEL);
-			}
-			if (pipe->sys.desc_cache == NULL) {
-				SPS_ERR(dev,
-					"sps:No memory for pipe%d of BAM %pa\n",
-						pipe_index, BAM_ID(dev));
-				return -ENOMEM;
+					kvzalloc(pipe->desc_size + size,
+						GFP_KERNEL);
+				dev->desc_cache_pointers[pipe_index] =
+						pipe->sys.desc_cache;
 			}
 		} else {
 			pipe->sys.desc_cache =
-				vmalloc(pipe->desc_size + size);
-
-			if (pipe->sys.desc_cache == NULL) {
-				SPS_ERR(dev,
-					"sps:No memory for pipe %d of BAM %pa\n",
+					kvzalloc(pipe->desc_size + size,
+						GFP_KERNEL);
+		}
+		if (pipe->sys.desc_cache == NULL) {
+			SPS_ERR(dev,
+				"sps:No memory for pipe%d of BAM %pa\n",
 					pipe_index, BAM_ID(dev));
-				return -ENOMEM;
-			}
-
-			memset(pipe->sys.desc_cache, 0, pipe->desc_size + size);
+			return -ENOMEM;
 		}
 
 		if (pipe->sys.desc_cache == NULL) {

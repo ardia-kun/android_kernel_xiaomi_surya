@@ -1259,7 +1259,7 @@ int wlan_hdd_bus_suspend_noirq(void)
 
 	errno = ucfg_pmo_psoc_is_target_wake_up_received(hdd_ctx->psoc);
 	if (errno == -EAGAIN) {
-		hdd_err("Firmware attempting wakeup, try again");
+		hdd_debug("Firmware attempting wakeup, try again");
 		wlan_hdd_inc_suspend_stats(hdd_ctx,
 					   SUSPEND_FAIL_INITIAL_WAKEUP);
 	}
@@ -1283,7 +1283,10 @@ resume_hif_noirq:
 	QDF_BUG(!hif_bus_resume_noirq(hif_ctx));
 
 done:
-	hdd_err("suspend_noirq failed, status: %d", errno);
+	if (errno != -EAGAIN)
+		hdd_err("suspend_noirq failed, status: %d", errno);
+	else
+		hdd_debug("suspend_noirq aborted (wakeup received), status: %d", errno);
 
 	return errno;
 }

@@ -2164,7 +2164,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		if (iface_ctx)
 			sta_session_id = iface_ctx->session_id;
 		else
-			ipa_err("sta iface_ctx is NULL");
+			ipa_debug("sta iface_ctx is NULL");
 	}
 
 	/*

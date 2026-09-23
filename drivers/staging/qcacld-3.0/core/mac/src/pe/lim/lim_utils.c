@@ -8937,10 +8937,11 @@ QDF_STATUS lim_pre_vdev_start(struct mac_context *mac,
 	band_mask = 1 << band;
 
 	ch_params.ch_width = session->ch_width;
-	ch_params.mhz_freq_seg0 =
-		wlan_reg_chan_band_to_freq(mac->pdev,
-					   session->ch_center_freq_seg0,
-					   band_mask);
+	if (session->ch_center_freq_seg0)
+		ch_params.mhz_freq_seg0 =
+			wlan_reg_chan_band_to_freq(mac->pdev,
+						   session->ch_center_freq_seg0,
+						   band_mask);
 
 	if (session->ch_center_freq_seg1)
 		ch_params.mhz_freq_seg1 =

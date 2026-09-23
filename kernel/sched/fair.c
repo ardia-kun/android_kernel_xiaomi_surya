@@ -10149,8 +10149,7 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 #ifdef CONFIG_SCHED_DEBUG
 		raw_spin_unlock_irqrestore(&mcc->lock, flags);
 		{
-			static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL,
-						      DEFAULT_RATELIMIT_BURST);
+			static DEFINE_RATELIMIT_STATE(rs, 60 * HZ, 1);
 			if (__ratelimit(&rs))
 				printk_deferred(KERN_INFO "CPU%d: update max cpu_capacity %lu\n",
 						cpu, capacity);

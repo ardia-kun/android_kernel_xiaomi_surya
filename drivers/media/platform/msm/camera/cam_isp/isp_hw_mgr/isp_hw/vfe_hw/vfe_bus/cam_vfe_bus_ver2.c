@@ -1081,19 +1081,10 @@ static int cam_vfe_bus_acquire_wm(
 		rsrc_data->pack_fmt |= 0x10;
 	}  else {
 		/* Write master 5-6 DS ports */
-		uint32_t align_width;
-
-		rsrc_data->width = rsrc_data->width * 4;
+		rsrc_data->width = ALIGNUP(rsrc_data->width * 4, 16);
 		rsrc_data->height = rsrc_data->height / 2;
+		rsrc_data->stride = rsrc_data->width;
 		rsrc_data->en_cfg = 0x1;
-		CAM_DBG(CAM_ISP, "before width %d", rsrc_data->width);
-		align_width = ALIGNUP(rsrc_data->width, 16);
-		if (align_width != rsrc_data->width) {
-			CAM_WARN(CAM_ISP,
-				"Override width %u with expected %u",
-				rsrc_data->width, align_width);
-			rsrc_data->width = align_width;
-		}
 	}
 
 	*client_done_mask = (1 << wm_idx);

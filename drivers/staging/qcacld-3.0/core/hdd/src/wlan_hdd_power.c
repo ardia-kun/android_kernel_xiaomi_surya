@@ -479,6 +479,11 @@ void hdd_enable_ns_offload(struct hdd_adapter *adapter,
 	}
 
 	/* cache ns request */
+	if (!ns_req->count) {
+		hdd_debug("No IPv6 addresses configured, skipping NS offload");
+		goto free_req;
+	}
+
 	status = ucfg_pmo_cache_ns_offload_req(ns_req);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		hdd_err("Failed to cache ns request; status:%d", status);
