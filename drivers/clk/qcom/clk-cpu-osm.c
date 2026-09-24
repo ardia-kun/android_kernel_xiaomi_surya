@@ -41,6 +41,7 @@
 
 #define OSM_INIT_RATE			300000000UL
 #define XO_RATE				19200000UL
+#define DEFAULT_CPU_MIN_KHZ		300000
 #define OSM_TABLE_SIZE			40
 #define OSM_TABLE_REDUCED_SIZE		12
 #define SINGLE_CORE_COUNT		1
@@ -698,6 +699,14 @@ static int osm_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		pr_err("%s: invalid frequency table: %d\n", __func__, ret);
 		goto err;
 	}
+
+	/*
+	 * Start every CPU policy at 300 MHz.  If this OSM table does not expose
+	 * that exact OPP, cpufreq will clamp the request to the nearest valid
+	 * entry instead of silently starting at the hardware maximum.
+	 */
+	policy->min = DEFAULT_CPU_MIN_KHZ;
+	policy->max = policy->cpuinfo.max_freq;
 
 	policy->dvfs_possible_from_any_cpu = true;
 	policy->fast_switch_possible = true;
